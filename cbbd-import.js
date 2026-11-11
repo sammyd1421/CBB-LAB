@@ -96,7 +96,7 @@
   };
   button.addEventListener("click",async()=>{
     if(button.disabled)return;
-    if(!confirm("Import men's Division I regular-season games for 2022–23 through 2026–27 to date? Saved windows are skipped on retry; games are stored on this device. Historical responses are cached to reduce repeat API calls."))return;
+    if(!confirm("Import men's Division I regular-season games for 2021–22 through 2026–27 to date? Saved windows are skipped on retry; games are stored on this device. Historical responses are cached to reduce repeat API calls."))return;
     button.disabled=true;button.textContent="Importing…";
     const progress=readProgress();let windows=0,received=0,saved=0;
     try{
