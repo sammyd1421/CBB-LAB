@@ -125,6 +125,11 @@
    const audit={eligible:ranked.length,seasons:targetSeasons.slice().sort((a,b)=>a-b),tier80_89:tier(80,90),tier90_94:tier(90,95),tier95_100:tier(95,100.000001),atLeast80:tier(80,100.000001),pctAtLeast80:ranked.length?100*tier(80,100.000001)/ranked.length:0,max:ranked[0]?.similarity??null,meanCoverage:ranked.length?100*mean(ranked.map(x=>x.coverage)):0};
    const result=ranked.slice(0,count);result.audit=audit;return result;
  }
+ // Publish the scanner API immediately after the engine is defined, before UI initialization.
+ window.CBBLabScanner={
+   loadGames:()=>read("games"),
+   compare:(games,home,away,neutral,years)=>candidates(games,home,away,years,50000,null,null,neutral)
+ };
  function render(rows){
    const el=$("matchupCompsResults");
    if(!rows.length){el.className="results empty";el.textContent="No sufficiently complete historical matchups found.";return}
