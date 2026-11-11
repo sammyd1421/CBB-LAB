@@ -44,3 +44,93 @@
 
 /* Mobile navigation: keep every destination, especially Data Center, visible and tappable without horizontal swiping. */
 @media(max-width:700px){.tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;overflow:visible;margin-left:0;margin-right:0;padding:0 0 12px}.tab{width:100%;min-width:0;white-space:normal;text-align:center;border:1px solid var(--line);border-radius:8px;padding:12px 8px;min-height:44px}.tab.active{border-color:var(--a);background:#122a2b}}
+
+
+/* Mobile fit pass: controls, long labels, cards and contained data tables */
+html{max-width:100%;overflow-x:hidden}
+body{width:100%;max-width:100%;overflow-x:hidden}
+.shell,.view,.panel,.schedule-picker,.results{min-width:0;max-width:100%}
+.formgrid,.formgrid>label,.metrics>article,.two>article,.profilegrid>div,.dist-block,.radar-card{min-width:0}
+label{min-width:0;overflow-wrap:anywhere}
+select,
+input,
+input[type="date"],
+input[type="number"],
+input[type="file"],
+textarea{
+  display:block;
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+select{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  min-height:44px;
+  padding-right:30px;
+}
+input[type="date"],input[type="number"]{min-height:44px}
+button{max-width:100%;white-space:normal;overflow-wrap:anywhere;touch-action:manipulation}
+.primary,.secondary,.danger{min-height:42px}
+.tablewrap{
+  display:block;
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  overflow-x:auto;
+  overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-inline:contain;
+}
+.tablewrap table{width:max-content;min-width:100%}
+.slate-table-wrap{max-width:100%;overflow-x:auto}
+.slate-metrics-table{min-width:1120px}
+.result-row{min-width:0;grid-template-columns:minmax(0,1fr) auto auto}
+.result-row>*{min-width:0;overflow-wrap:anywhere}
+.slate-game-head>div{min-width:0}
+.slate-game-head h3,.panel h3{overflow-wrap:anywhere}
+.profile-hero{min-width:0;flex-wrap:wrap}
+footer{gap:10px;flex-wrap:wrap}
+.upload{max-width:100%;min-width:0}
+@media(max-width:700px){
+  .topbar{height:auto;min-height:60px;padding:10px 14px;gap:8px}
+  .brand{min-width:0}
+  .pill{flex:0 0 auto;font-size:8px;padding:6px 8px}
+  .shell{padding:18px 12px}
+  .hero{align-items:flex-start;gap:10px;padding:12px 0 22px}
+  .hero h1{font-size:clamp(29px,8vw,42px);letter-spacing:-1.5px}
+  .hero-stat{flex:0 0 auto}
+  .hero-stat b{font-size:25px}
+  .head{gap:8px;align-items:flex-start;flex-wrap:wrap}
+  .head h2{overflow-wrap:anywhere}
+  .panel{padding:14px;border-radius:11px}
+  .formgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .formgrid>label{width:100%}
+  .formgrid select,.formgrid input{font-size:16px}
+  .primary,.secondary,.danger{max-width:100%}
+  .schedule-picker{padding:12px}
+  .schedule-picker .formgrid{grid-template-columns:minmax(0,1fr)}
+  .slate-game-head{gap:8px}
+  .slate-game-head h3{font-size:16px}
+  .slate-game .profilegrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .dist-row{min-width:0}
+  .slate-expand summary{overflow-wrap:anywhere}
+  .slate-expand summary span{max-width:100%}
+  .slate-expanded{min-width:0;padding-left:9px;padding-right:9px}
+  .volatility-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .result-row{grid-template-columns:minmax(0,1fr);gap:5px}
+  footer{font-size:9px}
+}
+@media(max-width:380px){
+  .shell{padding-left:10px;padding-right:10px}
+  .formgrid{grid-template-columns:minmax(0,1fr)}
+  .metrics{gap:7px}
+  .metrics article{padding:12px}
+  .panel{padding:12px}
+  .hero{flex-wrap:wrap}
+  .hero-stat{text-align:left}
+  .slate-game .profilegrid{grid-template-columns:minmax(0,1fr)}
+  .tab{font-size:11px;padding:11px 6px}
+}
