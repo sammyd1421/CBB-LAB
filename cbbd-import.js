@@ -3,7 +3,7 @@
   const button=document.getElementById("importCbbd"); if(!button)return;
   const status=document.getElementById("cbbdProgress");
   const PROGRESS_KEY="cbb-lab-cbbd-import-v3";
-  const FIRST_SEASON=2023, LAST_SEASON=2027;
+  const FIRST_SEASON=2022, LAST_SEASON=2027;
   const D1=new Set([
     "a10","atlantic10","acc","atlanticcoast","atlanticcoastconference",
     "americaeast","ameast","americanathletic","american","aac",
