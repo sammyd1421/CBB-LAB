@@ -37,7 +37,7 @@
        const d=mean(a.map(r=>r.def-((cur.get(r.opp)?.o??lgO)-lgO)));
        const p=mean(a.map(r=>r.pace-((cur.get(r.opp)?.p??lgP)-lgP)+lgP));
        const v={o:w*o+(1-w)*lgO,d:w*d+(1-w)*lgD,p:w*p+(1-w)*lgP,n};
-       FEATURE_KEYS.slice(3).forEach(f=>{const z=mean(a.map(r=>r[f]).filter(Number.isFinite));v[f]=z===null?null:z});
+       FEATURE_KEYS.slice(3).forEach(f=>{const z=mean(a.map(r=>r[f]).filter(Number.isFinite)),prior=league[f];v[f]=z===null?null:(prior===null?z:w*z+(1-w)*prior)});
        next.set(t,v);
      }
      cur=next;
@@ -60,7 +60,7 @@
      const z=Math.pow((v1[i]-v2[i])/scales[i],2),group=({o:"efficiency",d:"efficiency",p:"pace",efg:"shooting",tov:"ballSecurity",orb:"rebounding",ftr:"shotProfile",threeRate:"shotProfile",threePct:"shooting",twoPct:"shooting",oppEfg:"defense",oppTov:"defense",oppThreeRate:"defense",oppThreePct:"defense",oppTwoPct:"defense"})[k];
      sum+=w*z;weight+=w;used++;details[group].sum+=w*z;details[group].w+=w;
    }
-   if(used<18||weight===0)return null;
+   const usedA=v1.slice(0,FEATURE_KEYS.length).reduce((n,x,i)=>n+(Number.isFinite(x)&&Number.isFinite(v2[i])?1:0),0);\n   const usedB=v1.slice(FEATURE_KEYS.length).reduce((n,x,i)=>n+(Number.isFinite(x)&&Number.isFinite(v2[FEATURE_KEYS.length+i])?1:0),0);\n   if(used<12||usedA<5||usedB<5||weight===0)return null;
    Object.keys(details).forEach(k=>details[k]=details[k].w?Math.sqrt(details[k].sum/details[k].w):null);
    return {distance:Math.sqrt(sum/weight),details,coverage:used/v1.length,used};
  }
@@ -82,19 +82,6 @@
    }
    return {snapshots,seasonFinal};
  }
- function vector(snap,teamA,teamB,minGames=3){
-   const a=snap.get(teamA),b=snap.get(teamB);
-   if(!a||!b||a.n<minGames||b.n<minGames)return null;
-   if(![a.o,a.d,a.p,b.o,b.d,b.p].every(Number.isFinite))return null;
-   // A offense vs B defense; B offense vs A defense; both opponent-adjusted tempos.
-   return {v:[a.o,b.d,b.o,a.d,a.p,b.p],a,b};
- }
- function distance(v1,v2,scales){
-   const weights=[1.25,1.25,1.25,1.25,.8,.8];let sum=0,weight=0;
-   for(let i=0;i<6;i++){if(!Number.isFinite(v1[i])||!Number.isFinite(v2[i])||!scales[i])continue;sum+=weights[i]*Math.pow((v1[i]-v2[i])/scales[i],2);weight+=weights[i]}
-   return weight?Math.sqrt(sum/weight):null;
- }
- function std(a){const m=mean(a);return Math.sqrt(mean(a.map(x=>(x-m)**2))||0)||1}
  function marketFor(g,lines){
    const rec=lines.find(x=>String(x.gameId)===String(g.sourceGameId||String(g.id||"").replace("cbbd-","")));
    const entries=(rec?.lines||[]).filter(x=>N(x.spread)!==null||N(x.overUnder)!==null);
@@ -107,8 +94,8 @@
    const currentGames=games.filter(g=>Number(g.season)===currentSeason&&N(g.homeScore)!==null&&N(g.awayScore)!==null).sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
    if(!currentGames.length)throw Error("No completed games in the current season. Import current-season game data first.");
    const currentSnap=built.seasonFinal.get(String(currentSeason))||new Map();
-   const current=vector(currentSnap,teamA,teamB,5);
-   if(!current)throw Error("Need at least five completed games for each selected team to build a stable, full-detail matchup fingerprint.");
+   const current=vector(currentSnap,teamA,teamB,1);
+   if(!current)throw Error("Could not build a matchup profile. Each team needs at least one completed game with pace data.");
    const targetSeasons=years==="all"?seasons.filter(s=>s<currentSeason):seasons.filter(s=>s<currentSeason&&s>=currentSeason-Number(years));
    const historical=games.filter(g=>targetSeasons.includes(Number(g.season))&&N(g.homeScore)!==null&&N(g.awayScore)!==null).sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
    const raw=[];
@@ -116,7 +103,7 @@
    for(const g of historical){
      const cutoff=String(g.gameDate||"");if(!cutoff)continue;
      const snap=built.snapshots.get(String(g.season)+"|"+cutoff)||new Map();
-     const h=vector(snap,g.homeTeam,g.awayTeam,5),a=vector(snap,g.awayTeam,g.homeTeam,5);
+     const h=vector(snap,g.homeTeam,g.awayTeam,3),a=vector(snap,g.awayTeam,g.homeTeam,3);
      if(h)raw.push({g,orientation:"home",v:h.v});
      if(a)raw.push({g,orientation:"away",v:a.v});
    }
@@ -147,7 +134,7 @@
    const breakdown=Object.entries(top.details||{}).map(([k,v])=>'<div><small>'+({efficiency:"Efficiency",pace:"Pace",shooting:"Shooting",rebounding:"Rebounding",ballSecurity:"Ball security",defense:"Defense",shotProfile:"Shot profile"}[k]||k)+'</small><b>'+(v===null?"Not available":v.toFixed(2)+" distance")+'</b></div>').join("");
    const currentCoverage=(c.coverage*100).toFixed(0);
    el.className="results";
-   el.innerHTML='<div class="profilegrid"><div><small>Team A adjusted offense</small><b>'+c.a.o.toFixed(1)+'</b><small>Pts / 100 poss · '+c.a.n+' GP</small></div><div><small>Team A adjusted defense</small><b>'+c.a.d.toFixed(1)+'</b><small>Pts allowed / 100 poss · '+c.a.n+' GP</small></div><div><small>Team A adjusted pace</small><b>'+c.a.p.toFixed(1)+'</b><small>Possessions / game</small></div><div><small>Team B adjusted offense</small><b>'+c.b.o.toFixed(1)+'</b><small>Pts / 100 poss · '+c.b.n+' GP</small></div><div><small>Team B adjusted defense</small><b>'+c.b.d.toFixed(1)+'</b><small>Pts allowed / 100 poss · '+c.b.n+' GP</small></div><div><small>Team B adjusted pace</small><b>'+c.b.p.toFixed(1)+'</b><small>Possessions / game</small></div></div><div class="profilegrid"><div><small>Team A win rate</small><b>'+rate(win,loss,win+loss)+'</b><small>Ties '+tie+'</small></div><div><small>Team A ATS hit rate</small><b>'+rate(atsW,atsL,atsW+atsL)+'</b><small>Pushes '+atsP+' · no-line '+(rows.length-atsN)+'</small></div><div><small>Over hit rate</small><b>'+rate(ouW,ouL,ouW+ouL)+'</b><small>Pushes '+ouP+' · no-line '+(rows.length-ouN)+'</small></div><div><small>Historical comps</small><b>'+rows.length+'</b><small>Top closest matches</small></div></div><h4>Closest matchup fingerprint breakdown</h4><div class="profilegrid">'+breakdown+'</div><p class="muted small">Strict filter: at least five prior games per team and at least 18 of 30 team-feature comparisons available. All available profile features are standardized against the historical comparison pool; missing metrics are excluded, never zero-filled. Efficiency, pace, shooting, rebounding, ball security, defense and shot profile all contribute with different weights. Similarity is a statistical distance, not a win probability. Historical snapshots use only games completed before each matchup. Current fingerprint data coverage: '+currentCoverage+'%. Hit rates use only available lines; provider snapshots may not be official closing lines.</p>'+cards;
+   el.innerHTML='<div class="profilegrid"><div><small>Team A adjusted offense</small><b>'+c.a.o.toFixed(1)+'</b><small>Pts / 100 poss · '+c.a.n+' GP</small></div><div><small>Team A adjusted defense</small><b>'+c.a.d.toFixed(1)+'</b><small>Pts allowed / 100 poss · '+c.a.n+' GP</small></div><div><small>Team A adjusted pace</small><b>'+c.a.p.toFixed(1)+'</b><small>Possessions / game</small></div><div><small>Team B adjusted offense</small><b>'+c.b.o.toFixed(1)+'</b><small>Pts / 100 poss · '+c.b.n+' GP</small></div><div><small>Team B adjusted defense</small><b>'+c.b.d.toFixed(1)+'</b><small>Pts allowed / 100 poss · '+c.b.n+' GP</small></div><div><small>Team B adjusted pace</small><b>'+c.b.p.toFixed(1)+'</b><small>Possessions / game</small></div></div><div class="profilegrid"><div><small>Team A win rate</small><b>'+rate(win,loss,win+loss)+'</b><small>Ties '+tie+'</small></div><div><small>Team A ATS hit rate</small><b>'+rate(atsW,atsL,atsW+atsL)+'</b><small>Pushes '+atsP+' · no-line '+(rows.length-atsN)+'</small></div><div><small>Over hit rate</small><b>'+rate(ouW,ouL,ouW+ouL)+'</b><small>Pushes '+ouP+' · no-line '+(rows.length-ouN)+'</small></div><div><small>Historical comps</small><b>'+rows.length+'</b><small>Top closest matches</small></div></div><h4>Closest matchup fingerprint breakdown</h4><div class="profilegrid">'+breakdown+'</div><p class="muted small">Adaptive filter: current teams can qualify with one completed game; historical comparisons need at least three prior games per team. At least 12 of 30 team-feature comparisons must be present, with at least five from each team. Small samples are regressed toward league averages. All available profile features are standardized against the historical comparison pool; missing metrics are excluded, never zero-filled. Efficiency, pace, shooting, rebounding, ball security, defense and shot profile all contribute with different weights. Similarity is a statistical distance, not a win probability. Historical snapshots use only games completed before each matchup. Current fingerprint data coverage: '+currentCoverage+'%. Hit rates use only available lines; provider snapshots may not be official closing lines.</p>'+cards;
  }
  async function init(){
    const refreshTeams=async()=>{
