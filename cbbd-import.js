@@ -121,8 +121,10 @@
       const coverage=await countBySeason();
       if(!coverage.total)throw Error("The API returned no usable Division I games. No successful import was recorded. Check API access and conference labels.");
       const summary=Array.from({length:LAST_SEASON-FIRST_SEASON+1},(_,i)=>{const s=String(FIRST_SEASON+i);return (Number(s)-1)+"–"+s.slice(-2)+": "+(coverage.counts[s]||0).toLocaleString();}).join(" · ");
-      status.textContent="Import complete · "+coverage.total.toLocaleString()+" games stored on this device · "+summary+". Refreshing workspace…";
-      button.textContent="Import complete";setTimeout(()=>location.reload(),1000);
+      status.textContent="Import complete · "+coverage.total.toLocaleString()+" games stored on this device · "+summary+". Updating workspace without reloading…";
+      button.textContent="Import complete";
+      if(window.CBBLab&&typeof window.CBBLab.refreshData==="function")await window.CBBLab.refreshData();
+      status.textContent="Import complete · "+coverage.total.toLocaleString()+" games stored locally · "+summary+". You can keep using CBB LAB.";
     }catch(error){
       const coverage=await countBySeason().catch(()=>({total:0,counts:{}}));
       status.textContent="Import paused safely · "+windows+" windows completed · "+coverage.total.toLocaleString()+" games saved. "+error.message+" Tap Resume / retry; completed windows will be skipped.";
