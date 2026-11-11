@@ -1,38 +1,114 @@
-/* Matchup-level historical similarity and hit-rate reporting. */
+/* CBB LAB: pregame, opponent-adjusted matchup similarity.
+   All historical snapshots use only games completed before the target game's date. */
 (() => {
- const $=id=>document.getElementById(id),num=x=>x===null||x===undefined||x===""?null:Number(x),mean=a=>a.length?a.reduce((s,x)=>s+x,0)/a.length:null;
- const openDB=()=>new Promise((resolve,reject)=>{const r=indexedDB.open("cbb-lab-db",2);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});
- async function read(store){const db=await openDB();const v=await new Promise((ok,no)=>{const r=db.transaction(store,"readonly").objectStore(store).getAll();r.onsuccess=()=>ok(r.result||[]);r.onerror=()=>no(r.error)});db.close();return v}
- function paceProfiles(games){const m=new Map();games.forEach(g=>{for(const side of ["home","away"]){const team=g[side+"Team"],pace=num(g[side+"_pace"]);if(!team||pace===null)continue;const k=g.season+"|"+team;if(!m.has(k))m.set(k,[]);m.get(k).push(pace)}});return new Map([...m].map(([k,v])=>[k,mean(v)]))}
- function ratingMap(rows){return new Map(rows.map(r=>[r.season+"|"+r.team,r]))}
- function lineSummary(g){const lines=(g.lines||[]).filter(x=>num(x.spread)!==null||num(x.overUnder)!==null);return {spread:mean(lines.map(x=>num(x.spread)).filter(Number.isFinite)),total:mean(lines.map(x=>num(x.overUnder)).filter(Number.isFinite)),providers:lines.length}}
- function vectors(g,rm,pm){const h=rm.get(g.season+"|"+g.homeTeam),a=rm.get(g.season+"|"+g.awayTeam);if(!h||!a)return null;const hp=pm.get(g.season+"|"+g.homeTeam),ap=pm.get(g.season+"|"+g.awayTeam);if(![num(h.offensiveRating),num(h.defensiveRating),num(a.offensiveRating),num(a.defensiveRating),hp,ap].every(Number.isFinite))return null;return {home:[num(h.offensiveRating),num(a.defensiveRating),num(a.offensiveRating),num(h.defensiveRating),hp,ap],away:[num(a.offensiveRating),num(h.defensiveRating),num(h.offensiveRating),num(a.defensiveRating),ap,hp]}}
- function run(queryA,queryB,seasonLimit,count,games,ratings,lines){
-   const rm=ratingMap(ratings),pm=paceProfiles(games),lineMap=new Map(lines.map(x=>[String(x.gameId),x]));
-   const latestSeason=Math.max(...ratings.map(x=>Number(x.season)||0)),minSeason=seasonLimit==="all"?0:latestSeason-(Number(seasonLimit)||5);
-   const qa=rm.get(latestSeason+"|"+queryA)||[...ratings].filter(x=>x.team===queryA).sort((x,y)=>y.season-x.season)[0];
-   const qb=rm.get(latestSeason+"|"+queryB)||[...ratings].filter(x=>x.team===queryB).sort((x,y)=>y.season-x.season)[0];
-   const qpa=pm.get(qa.season+"|"+queryA),qpb=pm.get(qb.season+"|"+queryB);
-   if(!qa||!qb||![qpa,qpb].every(Number.isFinite))throw Error("Missing adjusted ratings or pace for one of the selected teams. Import the team game dataset and ratings first.");
-   const q=[num(qa.offensiveRating),num(qb.defensiveRating),num(qb.offensiveRating),num(qa.defensiveRating),qpa,qpb];
-   const candidates=[];
-   for(const g of games){const s=Number(g.season);if(s<minSeason||s>=latestSeason)continue;const v=vectors(g,rm,pm);if(!v)continue;const l=lineSummary(lineMap.get(String(g.sourceGameId||String(g.id||"").replace("cbbd-","")) )||{});
-     for(const orient of ["home","away"]){const z=v[orient];const keys=[0,1,2,3,4,5];let sum=0,w=0;keys.forEach(i=>{const all=[];for(const x of games){const vv=vectors(x,rm,pm);if(vv)all.push(vv.home[i],vv.away[i])}const mu=mean(all),sd=Math.sqrt(mean(all.map(x=>(x-mu)**2))||0)||1;sum+=((q[i]-z[i])/sd)**2;w++});candidates.push({g,orient,distance:Math.sqrt(sum/w),line:l})}
+ const $=id=>document.getElementById(id), N=x=>x===null||x===undefined||x===""?null:(Number.isFinite(Number(x))?Number(x):null);
+ const mean=a=>a.length?a.reduce((s,x)=>s+x,0)/a.length:null;
+ const db=()=>new Promise((ok,no)=>{const r=indexedDB.open("cbb-lab-db",2);r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
+ async function read(store){const d=await db();const a=await new Promise((ok,no)=>{const r=d.transaction(store,"readonly").objectStore(store).getAll();r.onsuccess=()=>ok(r.result||[]);r.onerror=()=>no(r.error)});d.close();return a}
+ function gameRows(g){
+   const hp=N(g.home_pace),ap=N(g.away_pace),pace=mean([hp,ap].filter(Number.isFinite));
+   const hs=N(g.homeScore),as=N(g.awayScore);
+   if(!g.homeTeam||!g.awayTeam||hs===null||as===null||pace===null||pace<=0)return [];
+   const homeP=hp||pace,awayP=ap||pace;
+   return [
+    {team:g.homeTeam,opp:g.awayTeam,season:String(g.season),date:String(g.gameDate||""),game:g,side:"home",off:hs/homeP*100,def:as/homeP*100,pace:homeP},
+    {team:g.awayTeam,opp:g.homeTeam,season:String(g.season),date:String(g.gameDate||""),game:g,side:"away",off:as/awayP*100,def:hs/awayP*100,pace:awayP}
+   ];
+ }
+ function adjustedSnapshot(history){
+   const rows=history.flatMap(gameRows), teams=[...new Set(rows.map(r=>r.team))];
+   if(!rows.length)return new Map();
+   const lgO=mean(rows.map(r=>r.off)),lgD=mean(rows.map(r=>r.def)),lgP=mean(rows.map(r=>r.pace));
+   const raw=new Map(teams.map(t=>{const a=rows.filter(r=>r.team===t);return [t,{n:a.length,o:mean(a.map(x=>x.off)),d:mean(a.map(x=>x.def)),p:mean(a.map(x=>x.pace))}]}));
+   let cur=new Map([...raw].map(([t,x])=>[t,{o:x.o,d:x.d,p:x.p}]));
+   // Iterative opponent adjustment with modest regression toward the league mean.
+   for(let k=0;k<12;k++){
+     const next=new Map();
+     for(const t of teams){
+       const a=rows.filter(r=>r.team===t),n=a.length,base=raw.get(t),w=n/(n+4);
+       const o=mean(a.map(r=>r.off-((cur.get(r.opp)?.d??lgD)-lgD)));
+       const d=mean(a.map(r=>r.def-((cur.get(r.opp)?.o??lgO)-lgO)));
+       const p=mean(a.map(r=>r.pace-((cur.get(r.opp)?.p??lgP)-lgP)+lgP));
+       next.set(t,{o:w*o+(1-w)*lgO,d:w*d+(1-w)*lgD,p:w*p+(1-w)*lgP,n});
+     }
+     cur=next;
    }
-   const best=new Map();candidates.sort((a,b)=>a.distance-b.distance).forEach(x=>{const id=x.g.id;if(!best.has(id))best.set(id,x)});return [...best.values()].sort((a,b)=>a.distance-b.distance).slice(0,count);
+   return cur;
  }
- function render(rows,teamA,teamB){
-   const el=$("matchupCompsResults");if(!rows.length){el.className="results empty";el.textContent="No historical games have complete adjusted ratings and pace for both teams.";return}
-   let atsW=0,atsL=0,atsP=0,ouO=0,ouU=0,ouP=0,teamW=0,teamL=0;
-   const html=rows.map(x=>{const g=x.g,l=x.line,swapped=x.orient==="away",scoreA=swapped?g.awayScore:g.homeScore,scoreB=swapped?g.homeScore:g.awayScore,margin=scoreA-scoreB,total=scoreA+scoreB;let result="";if(margin>0)teamW++;else if(margin<0)teamL++;
-     if(l.spread!==null){const homeMargin=num(g.homeScore)-num(g.awayScore),homeCover=homeMargin+l.spread,teamACover=swapped?homeCover<0:homeCover>0;if(Math.abs(homeCover)<0.001){atsP++;result+=" ATS push"}else if(teamACover){atsW++;result+=" Team A ATS win"}else{atsL++;result+=" Team A ATS loss"}}
-     if(l.total!==null){const diff=total-l.total;if(Math.abs(diff)<0.001){ouP++;result+=" · push"}else if(diff>0){ouO++;result+=" · over";}else{ouU++;result+=" · under"}}
-     return '<div class="result-row"><div><b>'+g.homeTeam+' vs '+g.awayTeam+'</b><small>'+g.season+' · '+String(g.gameDate||"").slice(0,10)+' · score '+g.homeScore+'–'+g.awayScore+'</small></div><span class="score">'+(100/(1+x.distance)).toFixed(0)+'%</span><span>'+result+'</span></div>';
+ function snapshotBefore(games,season,cutoff){
+   const hist=games.filter(g=>String(g.season)===String(season)&&String(g.gameDate||"")<cutoff&&N(g.homeScore)!==null&&N(g.awayScore)!==null);
+   return adjustedSnapshot(hist);
+ }
+ function vector(snap,teamA,teamB){
+   const a=snap.get(teamA),b=snap.get(teamB);
+   if(!a||!b||a.n<3||b.n<3)return null;
+   if(![a.o,a.d,a.p,b.o,b.d,b.p].every(Number.isFinite))return null;
+   // A offense vs B defense; B offense vs A defense; both opponent-adjusted tempos.
+   return {v:[a.o,b.d,b.o,a.d,a.p,b.p],a,b};
+ }
+ function distance(v1,v2,scales){
+   const weights=[1.25,1.25,1.25,1.25,.8,.8];let sum=0,weight=0;
+   for(let i=0;i<6;i++){if(!Number.isFinite(v1[i])||!Number.isFinite(v2[i])||!scales[i])continue;sum+=weights[i]*Math.pow((v1[i]-v2[i])/scales[i],2);weight+=weights[i]}
+   return weight?Math.sqrt(sum/weight):null;
+ }
+ function std(a){const m=mean(a);return Math.sqrt(mean(a.map(x=>(x-m)**2))||0)||1}
+ function marketFor(g,lines){
+   const rec=lines.find(x=>String(x.gameId)===String(g.sourceGameId||String(g.id||"").replace("cbbd-","")));
+   const entries=(rec?.lines||[]).filter(x=>N(x.spread)!==null||N(x.overUnder)!==null);
+   return {spread:entries.length?mean(entries.map(x=>N(x.spread)).filter(Number.isFinite)):null,total:entries.length?mean(entries.map(x=>N(x.overUnder)).filter(Number.isFinite)):null,providers:entries.length};
+ }
+ function candidates(games,teamA,teamB,years,count,lines){
+   const seasons=[...new Set(games.map(g=>Number(g.season)).filter(Number.isFinite))].sort((a,b)=>a-b);
+   const currentSeason=seasons[seasons.length-1];if(!currentSeason)throw Error("No imported season data found.");
+   const currentGames=games.filter(g=>Number(g.season)===currentSeason&&N(g.homeScore)!==null&&N(g.awayScore)!==null).sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
+   if(!currentGames.length)throw Error("No completed games in the current season. Import current-season game data first.");
+   const currentCutoff="9999";const currentSnap=adjustedSnapshot(currentGames);
+   const current=vector(currentSnap,teamA,teamB);
+   if(!current)throw Error("Not enough current-season games (minimum three per team) to build reliable pregame profiles for both selected teams.");
+   const targetSeasons=years==="all"?seasons.filter(s=>s<currentSeason):seasons.filter(s=>s<currentSeason&&s>=currentSeason-Number(years));
+   const historical=games.filter(g=>targetSeasons.includes(Number(g.season))&&N(g.homeScore)!==null&&N(g.awayScore)!==null).sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
+   const raw=[];
+   // Rebuild a strictly pregame snapshot for each historical matchup.
+   for(const g of historical){
+     const cutoff=String(g.gameDate||"");if(!cutoff)continue;
+     const snap=snapshotBefore(games,String(g.season),cutoff);
+     const h=vector(snap,g.homeTeam,g.awayTeam),a=vector(snap,g.awayTeam,g.homeTeam);
+     if(h)raw.push({g,orientation:"home",v:h.v});
+     if(a)raw.push({g,orientation:"away",v:a.v});
+   }
+   if(!raw.length)throw Error("No historical games have sufficient prior-game data to build pregame ratings.");
+   const scales=current.v.map((_,i)=>std(raw.map(x=>x.v[i])));
+   const unique=new Map();
+   for(const x of raw){const d=distance(current.v,x.v,scales);if(d===null)continue;const old=unique.get(String(x.g.id));if(!old||d<old.distance)unique.set(String(x.g.id),{...x,distance:d})}
+   return [...unique.values()].sort((a,b)=>a.distance-b.distance).slice(0,count).map(x=>({...x,market:marketFor(x.g,lines),similarity:100/(1+x.distance),current}));
+ }
+ function render(rows){
+   const el=$("matchupCompsResults");
+   if(!rows.length){el.className="results empty";el.textContent="No sufficiently complete historical matchups found.";return}
+   let win=0,loss=0,tie=0,atsW=0,atsL=0,atsP=0,ouW=0,ouL=0,ouP=0,atsN=0,ouN=0;
+   const cards=rows.map(x=>{
+     const g=x.g,homeMargin=N(g.homeScore)-N(g.awayScore),total=N(g.homeScore)+N(g.awayScore);
+     const teamAMargin=x.orientation==="home"?homeMargin:-homeMargin;
+     let outcome="Team A lost";
+     if(teamAMargin>0){win++;outcome="Team A won"}else if(teamAMargin<0)loss++;else{tie++;outcome="Tie"};
+     let result=[];
+     if(x.market.spread!==null){atsN++;const aCover=(x.orientation==="home"?homeMargin+x.market.spread:-(homeMargin+x.market.spread));if(Math.abs(aCover)<.001){atsP++;result.push("ATS push")}else if(aCover>0){atsW++;result.push("Team A covered")}else{atsL++;result.push("Team A did not cover")}}
+     if(x.market.total!==null){ouN++;const d=total-x.market.total;if(Math.abs(d)<.001){ouP++;result.push("total push")}else if(d>0){ouW++;result.push("over")}else{ouL++;result.push("under")}}
+     const spread=x.market.spread===null?"No spread":"Home spread "+x.market.spread.toFixed(1);
+     const marketTotal=x.market.total===null?"No total":"Total "+x.market.total.toFixed(1);
+     return '<div class="result-row"><div><b>'+g.homeTeam+' vs '+g.awayTeam+'</b><small>'+g.season+' · '+String(g.gameDate||"").slice(0,10)+' · '+g.homeScore+'–'+g.awayScore+' · '+spread+' · '+marketTotal+'</small><small>'+outcome+(result.length?" · "+result.join(" · "):"")+'</small></div><span class="score">'+x.similarity.toFixed(0)+'%</span></div>';
    }).join("");
-   const pct=(w,l)=>w+l?(100*w/(w+l)).toFixed(1)+"% · "+(w+l)+" graded":"— · no lines";
-   el.className="results";el.innerHTML='<div class="profilegrid"><div><small>Team A win rate</small><b>'+pct(teamW,teamL)+'</b></div><div><small>Team A ATS hit rate</small><b>'+pct(atsW,atsL)+'</b><small>Pushes '+atsP+'</small></div><div><small>Over hit rate</small><b>'+pct(ouO,ouU)+'</b><small>Pushes '+ouP+'</small></div><div><small>Games matched</small><b>'+rows.length+'</b><small>Top historical comps</small></div></div><p class="muted small">Similarity is a distance-based ranking, not a win probability. ATS uses the CBBD home spread convention; market lines are averaged across available provider records. Missing lines are excluded. Hit rates are descriptive and based only on the displayed comparable games.</p>'+html;
+   const rate=(w,l,n)=>n?(100*w/n).toFixed(1)+"% · "+n+" graded":"— · no lines";
+   const c=rows[0].current;
+   el.className="results";
+   el.innerHTML='<div class="profilegrid"><div><small>Team A adjusted offense</small><b>'+c.a.o.toFixed(1)+'</b><small>Pts / 100 poss</small></div><div><small>Team A adjusted defense</small><b>'+c.a.d.toFixed(1)+'</b><small>Pts allowed / 100 poss</small></div><div><small>Team A adjusted pace</small><b>'+c.a.p.toFixed(1)+'</b><small>Possessions / game</small></div><div><small>Team B adjusted offense</small><b>'+c.b.o.toFixed(1)+'</b><small>Pts / 100 poss</small></div><div><small>Team B adjusted defense</small><b>'+c.b.d.toFixed(1)+'</b><small>Pts allowed / 100 poss</small></div><div><small>Team B adjusted pace</small><b>'+c.b.p.toFixed(1)+'</b><small>Possessions / game</small></div></div><div class="profilegrid"><div><small>Team A win rate</small><b>'+rate(win,loss,win+loss)+'</b><small>Ties '+tie+'</small></div><div><small>Team A ATS hit rate</small><b>'+rate(atsW,atsL,atsW+atsL)+'</b><small>Pushes '+atsP+' · no-line '+(rows.length-atsN)+'</small></div><div><small>Over hit rate</small><b>'+rate(ouW,ouL,ouW+ouL)+'</b><small>Pushes '+ouP+' · no-line '+(rows.length-ouN)+'</small></div><div><small>Historical comps</small><b>'+rows.length+'</b><small>Top closest matches</small></div></div><p class="muted small">Similarity is a statistical distance, not a win probability. Pregame ratings use only completed games before each matchup, with iterative opponent adjustments and regression toward league average. Adjusted pace is an estimate derived from observed game pace and opponents' prior pace. Hit rates use only available lines; provider snapshots are averaged where multiple providers exist and may not be official closing lines.</p>'+cards;
  }
- async function populate(){try{const ratings=await read("ratings");const names=[...new Set(ratings.map(x=>x.team))].sort();["hmTeamA","hmTeamB"].forEach(id=>{const e=$(id),old=e.value;e.innerHTML='<option value="">Select a team</option>'+names.map(n=>'<option>'+n.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))+'</option>').join("");if(names.includes(old))e.value=old})}catch(e){}}
- const btn=$("runMatchupComps");if(btn){btn.addEventListener("click",async()=>{const a=$("hmTeamA").value,b=$("hmTeamB").value;if(!a||!b||a===b){$("matchupCompsResults").textContent="Choose two different teams.";return}btn.disabled=true;btn.textContent="Analyzing…";try{const [games,ratings,lines]=await Promise.all([read("games"),read("ratings"),read("lines")]);const rows=run(a,b,$("hmYears").value,Number($("hmCount").value),games,ratings,lines);render(rows,a,b)}catch(e){$("matchupCompsResults").className="results empty";$("matchupCompsResults").textContent=e.message}finally{btn.disabled=false;btn.textContent="Find similar matchups"}});populate()}
- const importBtn=$("importRatingsLines");if(importBtn){importBtn.addEventListener("click",()=>setTimeout(populate,1500))}
+ async function init(){
+   const [games,lines]=await Promise.all([read("games"),read("lines")]);
+   const teams=[...new Set(games.flatMap(g=>[g.homeTeam,g.awayTeam]).filter(Boolean))].sort();
+   ["hmTeamA","hmTeamB"].forEach((id,i)=>{const e=$(id),old=e.value;e.innerHTML='<option value="">Select a team</option>'+teams.map(t=>'<option>'+t.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))+'</option>').join("");const preferred=i===0?"Kentucky":"Kansas";if(teams.includes(old))e.value=old;else if(teams.includes(preferred))e.value=preferred});
+   const btn=$("runMatchupComps");if(!btn)return;
+   btn.addEventListener("click",async()=>{const a=$("hmTeamA").value,b=$("hmTeamB").value;if(!a||!b||a===b){$("matchupCompsResults").textContent="Choose two different teams.";return}btn.disabled=true;btn.textContent="Building pregame ratings…";try{const rows=candidates(games,a,b,$("hmYears").value,Number($("hmCount").value),lines);render(rows)}catch(e){$("matchupCompsResults").className="results empty";$("matchupCompsResults").textContent=e.message}finally{btn.disabled=false;btn.textContent="Find similar matchups"}});
+ }
+ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>init().catch(e=>console.error(e)));else init().catch(e=>console.error(e));
 })();
