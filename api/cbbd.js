@@ -8,7 +8,8 @@ const ALLOWED = {
 };
 
 export default async function handler(req, res) {
-  res.setHeader("Cache-Control", "private, no-store");
+  // Public basketball data is safe to edge-cache. This prevents repeated upstream
+  // CBBD calls when multiple users/reloads request the same historical window.
   res.setHeader("Vary", "Accept");
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
@@ -28,6 +29,12 @@ export default async function handler(req, res) {
       setup: "Add the existing CFBD/CBBD bearer key as a Vercel server-side environment variable named CBBD_API_KEY, then redeploy."
     });
   }
+
+  const season = Number(req.query.season || 0);
+  const currentSeason = new Date().getUTCFullYear() + (new Date().getUTCMonth() >= 9 ? 1 : 0);
+  const isCurrentSeason = season === currentSeason;
+  const cacheSeconds = resource === "lines" ? 21600 : (isCurrentSeason ? 900 : 86400);
+  res.setHeader("Cache-Control", "public, s-maxage=" + cacheSeconds + ", stale-while-revalidate=" + (cacheSeconds * 7));
 
   const upstream = new URL("https://api.collegebasketballdata.com/" + resource);
   for (const [key, raw] of Object.entries(req.query)) {
