@@ -3,6 +3,7 @@
 (() => {
  const $=id=>document.getElementById(id), N=x=>x===null||x===undefined||x===""?null:(Number.isFinite(Number(x))?Number(x):null);
  const mean=a=>a.length?a.reduce((s,x)=>s+x,0)/a.length:null;
+ const pct=x=>x!==null&&Math.abs(x)<=1.5?x*100:x;
  const db=()=>new Promise((ok,no)=>{const r=indexedDB.open("cbb-lab-db",2);r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
  async function read(store){const d=await db();const a=await new Promise((ok,no)=>{const r=d.transaction(store,"readonly").objectStore(store).getAll();r.onsuccess=()=>ok(r.result||[]);r.onerror=()=>no(r.error)});d.close();return a}
  // Export the scanner interface immediately. Function declarations are hoisted,
@@ -20,7 +21,7 @@
    const pace=mean([hp,ap].filter(Number.isFinite));
    if(!g.homeTeam||!g.awayTeam||hs===null||as===null||pace===null||pace<=0)return [];
    const row=(side,team,opp,score,oppScore,ownP,oppP)=>{
-     const other=side==="home"?"away":"home",v=k=>N(g[side+"_"+k]),ov=k=>N(g[other+"_"+k]);
+     const other=side==="home"?"away":"home",v=k=>pct(N(g[side+"_"+k])),ov=k=>pct(N(g[other+"_"+k]));
      return {team,opp,season:String(g.season),date:String(g.gameDate||""),game:g,side,
        off:score/(ownP||pace)*100,def:oppScore/(ownP||pace)*100,pace:ownP||pace,
        efg:v("efg"),tov:v("tov"),orb:v("orb"),ftr:v("ftr"),threeRate:v("threeRate"),threePct:v("threePct"),twoPct:v("twoPct"),
