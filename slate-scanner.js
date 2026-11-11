@@ -77,6 +77,23 @@
    valid.sort(sorters[mode]||sorters.balanced);
    return valid;
  }
+
+ let lastValid=[],sortKey="balanceScore",sortDir="desc";
+ const columns=[["home","Matchup"],["n","Comps"],["avgSim","Avg similarity"],["topSim","Highest similarity"],["twins","80%+ twins"],["sdTotal","Total SD"],["sdMargin","Margin SD"],["totalMean","Avg total"],["totalMedian","Median total"],["totalRange","Total range"],["marginMean","Avg home margin"],["winsPct","Home win %"],["balanceScore","Balance score"]];
+ function sortTable(key){if(sortKey===key)sortDir=sortDir==="asc"?"desc":"asc";else{sortKey=key;sortDir=key==="home"?"asc":"desc"}renderTable()}
+ function renderTable(){
+  const out=$("slateResults");if(!out||!lastValid.length)return;
+  const rows=lastValid.slice().sort((a,b)=>{
+   const val=x=>{const z=x.s;switch(sortKey){case"home":return x.g.awayTeam+" at "+x.g.homeTeam;case"twins":return z.twins.length;case"totalRange":return z.totalMax-z.totalMin;case"winsPct":return 100*z.wins/z.n;default:return z[sortKey]}};
+   const av=val(a),bv=val(b);return typeof av==="string"?(sortDir==="asc"?av.localeCompare(bv):bv.localeCompare(av)):(sortDir==="asc"?av-bv:bv-av);
+  });
+  const heads=columns.map(([k,l])=>'<th><button class="slate-sort-head" data-sort="'+k+'">'+l+(sortKey===k?(sortDir==="asc"?" ↑":" ↓"):" ↕")+'</button></th>').join("");
+  const body=rows.map((x,i)=>{const z=x.s,g=x.g;const v={home:esc(g.awayTeam+" at "+g.homeTeam),n:z.n,avgSim:fmt(z.avgSim)+"%",topSim:fmt(z.topSim)+"%",twins:z.twins.length,sdTotal:fmt(z.sdTotal),sdMargin:fmt(z.sdMargin),totalMean:fmt(z.totalMean),totalMedian:fmt(z.totalMedian),totalRange:z.totalMin+"–"+z.totalMax,marginMean:fmt(z.marginMean),winsPct:(100*z.wins/z.n).toFixed(1)+"%",balanceScore:fmt(z.balanceScore)+"/100"};
+   return '<tr>'+columns.map(([k])=>'<td>'+(k==="home"?"<b>"+v[k]+"</b>":v[k])+'</td>').join("")+'</tr><tr class="slate-expand-row"><td colspan="'+columns.length+'"><details><summary>Expand matchup details · '+esc(g.awayTeam)+' at '+esc(g.homeTeam)+'</summary>'+gameCard(g,z,i)+'</details></td></tr>';
+  }).join("");
+  const table='<div class="tablewrap slate-table-wrap"><table class="slate-metrics-table"><thead><tr>'+heads+'</tr></thead><tbody>'+body+'</tbody></table></div>';
+  const existing=out.querySelector(".slate-table-wrap");if(existing)existing.outerHTML=table;else out.insertAdjacentHTML("beforeend",table);
+ }
  async function scan(){
    const btn=$("runSlateScan"),out=$("slateResults"),status=$("slateStatus"),date=$("slateDate").value;
    if(!date){status.textContent="Choose a slate date.";return}
@@ -101,14 +118,16 @@
        await new Promise(resolve=>setTimeout(resolve,0));
      }
      const valid=rankGames(results.filter(x=>x.s),$("slateSort")?.value||"balanced");
+     lastValid=valid;sortKey="balanceScore";sortDir="desc";
      const noData=results.filter(x=>!x.s);
      const intro='<div class="profilegrid"><div><small>Scheduled games scanned</small><b>'+slate.length+'</b></div><div><small>Games with usable history</small><b>'+valid.length+'</b></div><div><small>Similarity floor</small><b>60%</b></div><div><small>80%+ historical twins</small><b>'+valid.filter(x=>x.s.twins.length).length+'</b></div></div><p class="muted small">Default ranking weights average similarity 40%, total stability 30% and margin stability 30%. Volatility is measured by standard deviation; lower is more consistent. Scores are relative to the games on this slate, not probabilities. All comparisons below 60% are excluded, with at least five qualifying games required.</p>';
-     out.innerHTML=intro+(valid.length?valid.map((x,i)=>gameCard(x.g,x.s,i)).join(""):'<div class="empty">No games on this slate had at least five historical comparisons at or above 60% similarity. No patterns were manufactured.</div>')+
+     out.innerHTML=intro+(valid.length?'<p class="muted small">Tap any column heading to sort. Expand a matchup row for distributions, historical twins and closest comparisons.</p>':'<div class="empty">No games on this slate had at least five historical comparisons at or above 60% similarity. No patterns were manufactured.</div>')+
        (noData.length?'<h3>Insufficient historical comparisons</h3>'+noData.map(x=>'<div class="result-row"><div><b>'+esc(x.g.awayTeam)+' at '+esc(x.g.homeTeam)+'</b><small>'+(x.error?esc(x.error):x.n+' qualifying comparisons; fewer than the five-game minimum')+'</small></div></div>').join(""):"");
      status.textContent="Scan complete · "+slate.length+" games reviewed · "+valid.length+" reportable samples. Sorted by "+($("slateSort")?.selectedOptions[0]?.textContent||"overall balance")+". No market lines used.";
    }catch(e){out.className="results empty";out.textContent=e.message;status.textContent="Scan could not complete."}
    finally{btn.disabled=false;btn.textContent="Scan this date"}
  }
  const btn=$("runSlateScan");if(btn)btn.addEventListener("click",scan);
+ const out=$("slateResults");if(out)out.addEventListener("click",e=>{const b=e.target.closest("[data-sort]");if(b){e.preventDefault();sortTable(b.dataset.sort)}});
  dateInit();
 })();
