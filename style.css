@@ -150,3 +150,12 @@ footer{gap:10px;flex-wrap:wrap}
 .score-histogram-legend{display:flex;gap:16px;flex-wrap:wrap;margin:8px 0 4px;color:var(--muted);font-size:10px}
 .score-histogram-legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
 @media(max-width:480px){.score-histogram{gap:3px;padding:8px 3px}.score-bin>b{font-size:8px}.score-bin>small{font-size:7px}.score-bin-bars{gap:2px}}
+
+.score-dist-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.score-dist-section{min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.015)}
+.score-dist-section .score-histogram{grid-template-columns:repeat(7,minmax(0,1fr));min-height:170px;margin:8px 0}
+.score-dist-section .score-bin{height:150px}
+.score-dist-section .score-bin-bars{height:88px}
+.score-dist-section .score-bin>b{font-size:9px}
+.score-dist-section .score-bin>small{font-size:8px}
+@media(max-width:680px){.score-dist-grid{grid-template-columns:1fr}}
