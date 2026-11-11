@@ -1,0 +1,2 @@
+/* Transparent scoring-profile baseline, not a calibrated betting model. */
+(function(g){function project(a,b,homeAdv=3,neutral=false){if(!a||!b||![a.ppg,a.oppg,b.ppg,b.oppg].every(Number.isFinite))return null;const h=neutral?0:(Number(homeAdv)||0),ap=(a.ppg+b.oppg)/2+h/2,bp=(b.ppg+a.oppg)/2-h/2;return{aPts:ap,bPts:bp,total:ap+bp,margin:ap-bp,method:"Average of team scoring and opponent scoring averages"};}g.CBBAnalytics.project=project;})(window);
