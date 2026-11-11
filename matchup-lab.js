@@ -60,7 +60,9 @@
      const z=Math.pow((v1[i]-v2[i])/scales[i],2),group=({o:"efficiency",d:"efficiency",p:"pace",efg:"shooting",tov:"ballSecurity",orb:"rebounding",ftr:"shotProfile",threeRate:"shotProfile",threePct:"shooting",twoPct:"shooting",oppEfg:"defense",oppTov:"defense",oppThreeRate:"defense",oppThreePct:"defense",oppTwoPct:"defense"})[k];
      sum+=w*z;weight+=w;used++;details[group].sum+=w*z;details[group].w+=w;
    }
-   const usedA=v1.slice(0,FEATURE_KEYS.length).reduce((n,x,i)=>n+(Number.isFinite(x)&&Number.isFinite(v2[i])?1:0),0);\n   const usedB=v1.slice(FEATURE_KEYS.length).reduce((n,x,i)=>n+(Number.isFinite(x)&&Number.isFinite(v2[FEATURE_KEYS.length+i])?1:0),0);\n   if(used<12||usedA<5||usedB<5||weight===0)return null;
+   const usedA=v1.slice(0,FEATURE_KEYS.length).reduce((n,x,i)=>n+(Number.isFinite(x)&&Number.isFinite(v2[i])?1:0),0);
+   const usedB=v1.slice(FEATURE_KEYS.length).reduce((n,x,i)=>n+(Number.isFinite(x)&&Number.isFinite(v2[FEATURE_KEYS.length+i])?1:0),0);
+   if(used<12||usedA<5||usedB<5||weight===0)return null;
    Object.keys(details).forEach(k=>details[k]=details[k].w?Math.sqrt(details[k].sum/details[k].w):null);
    return {distance:Math.sqrt(sum/weight),details,coverage:used/v1.length,used};
  }
