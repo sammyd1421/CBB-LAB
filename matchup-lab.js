@@ -119,11 +119,27 @@
    el.innerHTML='<div class="profilegrid"><div><small>Team A adjusted offense</small><b>'+c.a.o.toFixed(1)+'</b><small>Pts / 100 poss · '+c.a.n+' GP</small></div><div><small>Team A adjusted defense</small><b>'+c.a.d.toFixed(1)+'</b><small>Pts allowed / 100 poss · '+c.a.n+' GP</small></div><div><small>Team A adjusted pace</small><b>'+c.a.p.toFixed(1)+'</b><small>Possessions / game</small></div><div><small>Team B adjusted offense</small><b>'+c.b.o.toFixed(1)+'</b><small>Pts / 100 poss · '+c.b.n+' GP</small></div><div><small>Team B adjusted defense</small><b>'+c.b.d.toFixed(1)+'</b><small>Pts allowed / 100 poss · '+c.b.n+' GP</small></div><div><small>Team B adjusted pace</small><b>'+c.b.p.toFixed(1)+'</b><small>Possessions / game</small></div></div><div class="profilegrid"><div><small>Team A win rate</small><b>'+rate(win,loss,win+loss)+'</b><small>Ties '+tie+'</small></div><div><small>Team A ATS hit rate</small><b>'+rate(atsW,atsL,atsW+atsL)+'</b><small>Pushes '+atsP+' · no-line '+(rows.length-atsN)+'</small></div><div><small>Over hit rate</small><b>'+rate(ouW,ouL,ouW+ouL)+'</b><small>Pushes '+ouP+' · no-line '+(rows.length-ouN)+'</small></div><div><small>Historical comps</small><b>'+rows.length+'</b><small>Top closest matches</small></div></div><p class="muted small">Similarity is a statistical distance, not a win probability. Pregame ratings use only completed games before each matchup, with iterative opponent adjustments and regression toward league average. Adjusted pace is an estimate derived from observed game pace and opponents prior pace. Hit rates use only available lines; provider snapshots are averaged where multiple providers exist and may not be official closing lines.</p>'+cards;
  }
  async function init(){
-   const [games,lines]=await Promise.all([read("games"),read("lines")]);
-   const teams=[...new Set(games.flatMap(g=>[g.homeTeam,g.awayTeam]).filter(Boolean))].sort();
-   ["hmTeamA","hmTeamB"].forEach((id,i)=>{const e=$(id),old=e.value;e.innerHTML='<option value="">Select a team</option>'+teams.map(t=>'<option>'+t.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))+'</option>').join("");const preferred=i===0?"Kentucky":"Kansas";if(teams.includes(old))e.value=old;else if(teams.includes(preferred))e.value=preferred});
+   const refreshTeams=async()=>{
+     const [games,lines]=await Promise.all([read("games"),read("lines")]);
+     const teams=[...new Set(games.flatMap(g=>[g.homeTeam,g.awayTeam]).filter(Boolean))].sort();
+     ["hmTeamA","hmTeamB"].forEach((id,i)=>{const e=$(id),old=e.value;e.innerHTML='<option value="">Select a team</option>'+teams.map(t=>'<option>'+t.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))+'</option>').join("");const preferred=i===0?"Kentucky":"Kansas";if(teams.includes(old))e.value=old;else if(teams.includes(preferred))e.value=preferred});
+     return {games,lines,teams};
+   };
+   await refreshTeams();
    const btn=$("runMatchupComps");if(!btn)return;
-   btn.addEventListener("click",async()=>{const a=$("hmTeamA").value,b=$("hmTeamB").value;if(!a||!b||a===b){$("matchupCompsResults").textContent="Choose two different teams.";return}btn.disabled=true;btn.textContent="Building pregame ratings…";try{const rows=candidates(games,a,b,$("hmYears").value,Number($("hmCount").value),lines);render(rows)}catch(e){$("matchupCompsResults").className="results empty";$("matchupCompsResults").textContent=e.message}finally{btn.disabled=false;btn.textContent="Find similar matchups"}});
+   btn.addEventListener("click",async()=>{
+     const a=$("hmTeamA").value,b=$("hmTeamB").value;
+     if(!a||!b||a===b){$("matchupCompsResults").textContent="Choose two different teams.";return}
+     btn.disabled=true;btn.textContent="Refreshing saved data…";
+     try{
+       const {games,lines,teams}=await refreshTeams();
+       if(!games.length)throw Error("No games are saved in this browser yet. Open Data Center and check the imported game count.");
+       if(!teams.includes(a)||!teams.includes(b))throw Error("The selected teams were not found in the refreshed saved dataset. Choose them again.");
+       btn.textContent="Building pregame ratings…";
+       const rows=candidates(games,a,b,$("hmYears").value,Number($("hmCount").value),lines);render(rows);
+     }catch(e){$("matchupCompsResults").className="results empty";$("matchupCompsResults").textContent=e.message}
+     finally{btn.disabled=false;btn.textContent="Find similar matchups"}
+   });
  }
  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>init().catch(e=>console.error(e)));else init().catch(e=>console.error(e));
 })();
