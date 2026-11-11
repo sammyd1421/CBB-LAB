@@ -119,7 +119,7 @@
        const g=slate[i];status.textContent="Scanning "+(i+1)+" of "+slate.length+": "+g.awayTeam+" at "+g.homeTeam;
        try{
          const candidates=window.CBBLabScanner.compare(games,g.homeTeam,g.awayTeam,!!g.neutralSite,years);
-         const qualifying=candidates.filter(x=>Number.isFinite(x.similarity)&&x.similarity>=80);
+         const qualifying=candidates.filter(x=>Number.isFinite(x.similarity)&&x.similarity>=60);
          if(qualifying.length<5){results.push({g,insufficient:true,n:qualifying.length});continue}
          results.push({g,s:summary(qualifying)});
        }catch(e){results.push({g,error:e.message})}
@@ -128,9 +128,9 @@
      const valid=rankGames(results.filter(x=>x.s),$("slateSort")?.value||"balanced");
      lastValid=valid;sortKey="balanceScore";sortDir="desc";
      const noData=results.filter(x=>!x.s);
-     const intro='<div class="profilegrid"><div><small>Scheduled games scanned</small><b>'+slate.length+'</b></div><div><small>Games with usable history</small><b>'+valid.length+'</b></div><div><small>Similarity floor</small><b>80%</b></div><div><small>80%+ historical twins</small><b>'+valid.filter(x=>x.s.twins.length).length+'</b></div></div><p class="muted small">Default ranking weights average similarity 40%, total stability 30% and margin stability 30%. Volatility is measured by standard deviation; lower is more consistent. Scores are relative to the games on this slate, not probabilities. Only 80%+ absolute matches that pass the five-possession pace and 12-point scoring-environment screens are included; each team needs at least five completed games, with at least five qualifying historical comps required.</p>';
-     out.innerHTML=intro+(valid.length?'<p class="muted small">Tap any column heading to sort. Expand a matchup row for distributions, historical twins and closest comparisons.</p>':'<div class="empty">No games on this slate had at least five historical comparisons at or above 80% similarity after scoring-environment filters. No patterns were manufactured.</div>')+
-       (noData.length?'<h3>Insufficient historical comparisons</h3>'+noData.map(x=>'<div class="result-row"><div><b>'+esc(x.g.awayTeam)+' at '+esc(x.g.homeTeam)+'</b><small>'+(x.error?esc(x.error):x.n+' strong comparisons at 80%+; fewer than the five-game minimum')+'</small></div></div>').join(""):"");
+     const intro='<div class="profilegrid"><div><small>Scheduled games scanned</small><b>'+slate.length+'</b></div><div><small>Games with usable history</small><b>'+valid.length+'</b></div><div><small>Similarity floor</small><b>60%</b></div><div><small>80%+ historical twins</small><b>'+valid.filter(x=>x.s.twins.length).length+'</b></div></div><p class="muted small">Default ranking weights average similarity 40%, total stability 30% and margin stability 30%. Volatility is measured by standard deviation; lower is more consistent. Scores are relative to the games on this slate, not probabilities. Only 60%+ absolute matches that pass the five-possession pace and 12-point scoring-environment screens are included; each team needs at least five completed games, with at least five qualifying historical comps required.</p>';
+     out.innerHTML=intro+(valid.length?'<p class="muted small">Tap any column heading to sort. Expand a matchup row for distributions, historical twins and closest comparisons.</p>':'<div class="empty">No games on this slate had at least five historical comparisons at or above 60% similarity after scoring-environment filters. No patterns were manufactured.</div>')+
+       (noData.length?'<h3>Insufficient historical comparisons</h3>'+noData.map(x=>'<div class="result-row"><div><b>'+esc(x.g.awayTeam)+' at '+esc(x.g.homeTeam)+'</b><small>'+(x.error?esc(x.error):x.n+' comparisons at 60%+; fewer than the five-game minimum')+'</small></div></div>').join(""):"");
      renderTable();
      status.textContent="Scan complete · "+slate.length+" games reviewed · "+valid.length+" reportable samples. Sorted by "+($("slateSort")?.selectedOptions[0]?.textContent||"overall balance")+". No market lines used.";
    }catch(e){out.className="results empty";out.textContent=e.message;status.textContent="Scan could not complete."}
