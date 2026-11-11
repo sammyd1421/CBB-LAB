@@ -6,7 +6,7 @@ Use CollegeBasketballData (CBBD) as the first provider. Its API uses the same be
 | CBB LAB season | CBBD season parameter |
 |---|---:|
 | 2021-22 | 2022 |
-| 2022-23 | 2023 |
+| 2021-22 | 2022 |\n| 2022-23 | 2023 |
 | 2023-24 | 2024 |
 | 2024-25 | 2025 |
 | 2025-26 | 2026 |
