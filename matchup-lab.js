@@ -5,35 +5,64 @@
  const mean=a=>a.length?a.reduce((s,x)=>s+x,0)/a.length:null;
  const db=()=>new Promise((ok,no)=>{const r=indexedDB.open("cbb-lab-db",2);r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
  async function read(store){const d=await db();const a=await new Promise((ok,no)=>{const r=d.transaction(store,"readonly").objectStore(store).getAll();r.onsuccess=()=>ok(r.result||[]);r.onerror=()=>no(r.error)});d.close();return a}
+ const FEATURE_KEYS=["o","d","p","efg","tov","orb","ftr","threeRate","threePct","twoPct","oppEfg","oppTov","oppThreeRate","oppThreePct","oppTwoPct"];
+ const FEATURE_LABELS=["Adj offense","Adj defense","Pace","eFG%","Turnover rate","Off. rebound rate","Free-throw rate","3PA rate","3P%","2P%","Opp. eFG%","Opp. turnover rate","Opp. 3PA rate","Opp. 3P%","Opp. 2P%"];
+ const FEATURE_GROUPS=["efficiency","efficiency","pace","shooting","ball security","rebounding","shot profile","shot profile","shooting","shooting","defense","defense","defense","defense","defense"];
+ const FEATURE_WEIGHTS=[1.5,1.5,.9,1.15,.9,.85,.65,.8,1.0,.9,1.15,.75,.75,.9,.8];
  function gameRows(g){
-   const hp=N(g.home_pace),ap=N(g.away_pace),pace=mean([hp,ap].filter(Number.isFinite));
-   const hs=N(g.homeScore),as=N(g.awayScore);
+   const hs=N(g.homeScore),as=N(g.awayScore),hp=N(g.home_pace),ap=N(g.away_pace);
+   const pace=mean([hp,ap].filter(Number.isFinite));
    if(!g.homeTeam||!g.awayTeam||hs===null||as===null||pace===null||pace<=0)return [];
-   const homeP=hp||pace,awayP=ap||pace;
-   return [
-    {team:g.homeTeam,opp:g.awayTeam,season:String(g.season),date:String(g.gameDate||""),game:g,side:"home",off:hs/homeP*100,def:as/homeP*100,pace:homeP},
-    {team:g.awayTeam,opp:g.homeTeam,season:String(g.season),date:String(g.gameDate||""),game:g,side:"away",off:as/awayP*100,def:hs/awayP*100,pace:awayP}
-   ];
+   const row=(side,team,opp,score,oppScore,ownP,oppP)=>{
+     const other=side==="home"?"away":"home",v=k=>N(g[side+"_"+k]),ov=k=>N(g[other+"_"+k]);
+     return {team,opp,season:String(g.season),date:String(g.gameDate||""),game:g,side,
+       off:score/(ownP||pace)*100,def:oppScore/(ownP||pace)*100,pace:ownP||pace,
+       efg:v("efg"),tov:v("tov"),orb:v("orb"),ftr:v("ftr"),threeRate:v("threeRate"),threePct:v("threePct"),twoPct:v("twoPct"),
+       oppEfg:ov("efg"),oppTov:ov("tov"),oppThreeRate:ov("threeRate"),oppThreePct:ov("threePct"),oppTwoPct:ov("twoPct")};
+   };
+   return [row("home",g.homeTeam,g.awayTeam,hs,as,hp,ap),row("away",g.awayTeam,g.homeTeam,as,hs,ap,hp)];
  }
  function adjustedSnapshot(history){
    const rows=history.flatMap(gameRows),byTeam=new Map();
    if(!rows.length)return new Map();
    rows.forEach(r=>{if(!byTeam.has(r.team))byTeam.set(r.team,[]);byTeam.get(r.team).push(r)});
    const teams=[...byTeam.keys()],lgO=mean(rows.map(r=>r.off)),lgD=mean(rows.map(r=>r.def)),lgP=mean(rows.map(r=>r.pace));
-   const raw=new Map(teams.map(t=>{const a=byTeam.get(t);return [t,{n:a.length,o:mean(a.map(x=>x.off)),d:mean(a.map(x=>x.def)),p:mean(a.map(x=>x.pace))}]}));
-   let cur=new Map([...raw].map(([t,x])=>[t,{o:x.o,d:x.d,p:x.p}]));
+   const league={};FEATURE_KEYS.slice(3).forEach(k=>league[k]=mean(rows.map(r=>r[k]).filter(Number.isFinite)));
+   let cur=new Map(teams.map(t=>{const a=byTeam.get(t),v={n:a.length,o:mean(a.map(x=>x.off)),d:mean(a.map(x=>x.def)),p:mean(a.map(x=>x.pace))};FEATURE_KEYS.slice(3).forEach(k=>v[k]=mean(a.map(x=>x[k]).filter(Number.isFinite)));return [t,v]}));
    for(let k=0;k<10;k++){
      const next=new Map();
      for(const t of teams){
-       const a=byTeam.get(t),n=a.length,w=n/(n+4);
+       const a=byTeam.get(t),n=a.length,w=n/(n+5);
        const o=mean(a.map(r=>r.off-((cur.get(r.opp)?.d??lgD)-lgD)));
        const d=mean(a.map(r=>r.def-((cur.get(r.opp)?.o??lgO)-lgO)));
        const p=mean(a.map(r=>r.pace-((cur.get(r.opp)?.p??lgP)-lgP)+lgP));
-       next.set(t,{o:w*o+(1-w)*lgO,d:w*d+(1-w)*lgD,p:w*p+(1-w)*lgP,n});
+       const v={o:w*o+(1-w)*lgO,d:w*d+(1-w)*lgD,p:w*p+(1-w)*lgP,n};
+       FEATURE_KEYS.slice(3).forEach(f=>{const z=mean(a.map(r=>r[f]).filter(Number.isFinite));v[f]=z===null?null:z});
+       next.set(t,v);
      }
      cur=next;
    }
    return cur;
+ }
+ function vector(snap,teamA,teamB,minGames=5){
+   const a=snap.get(teamA),b=snap.get(teamB);
+   if(!a||!b||a.n<minGames||b.n<minGames)return null;
+   const v=[...FEATURE_KEYS.map(k=>a[k]),...FEATURE_KEYS.map(k=>b[k])];
+   return {v,a,b,coverage:v.filter(Number.isFinite).length/v.length};
+ }
+ function std(a){const m=mean(a);return Math.sqrt(mean(a.map(x=>(x-m)**2))||0)||1}
+ function distance(v1,v2,scales){
+   let sum=0,weight=0,used=0;
+   const details={efficiency:{sum:0,w:0},pace:{sum:0,w:0},shooting:{sum:0,w:0},rebounding:{sum:0,w:0},ballSecurity:{sum:0,w:0},defense:{sum:0,w:0},shotProfile:{sum:0,w:0}};
+   for(let i=0;i<v1.length;i++){
+     if(!Number.isFinite(v1[i])||!Number.isFinite(v2[i])||!scales[i])continue;
+     const j=i%FEATURE_KEYS.length,k=FEATURE_KEYS[j],w=FEATURE_WEIGHTS[j];
+     const z=Math.pow((v1[i]-v2[i])/scales[i],2),group=({o:"efficiency",d:"efficiency",p:"pace",efg:"shooting",tov:"ballSecurity",orb:"rebounding",ftr:"shotProfile",threeRate:"shotProfile",threePct:"shooting",twoPct:"shooting",oppEfg:"defense",oppTov:"defense",oppThreeRate:"defense",oppThreePct:"defense",oppTwoPct:"defense"})[k];
+     sum+=w*z;weight+=w;used++;details[group].sum+=w*z;details[group].w+=w;
+   }
+   if(used<12||weight===0)return null;
+   Object.keys(details).forEach(k=>details[k]=details[k].w?Math.sqrt(details[k].sum/details[k].w):null);
+   return {distance:Math.sqrt(sum/weight),details,coverage:used/v1.length,used};
  }
  function buildSnapshots(games){
    const bySeason=new Map();
@@ -78,8 +107,8 @@
    const currentGames=games.filter(g=>Number(g.season)===currentSeason&&N(g.homeScore)!==null&&N(g.awayScore)!==null).sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
    if(!currentGames.length)throw Error("No completed games in the current season. Import current-season game data first.");
    const currentSnap=built.seasonFinal.get(String(currentSeason))||new Map();
-   const current=vector(currentSnap,teamA,teamB,1);
-   if(!current)throw Error("Not enough current-season games (at least one completed game per team) to build reliable pregame profiles for both selected teams.");
+   const current=vector(currentSnap,teamA,teamB,5);
+   if(!current)throw Error("Need at least five completed games for each selected team to build a stable, full-detail matchup fingerprint.");
    const targetSeasons=years==="all"?seasons.filter(s=>s<currentSeason):seasons.filter(s=>s<currentSeason&&s>=currentSeason-Number(years));
    const historical=games.filter(g=>targetSeasons.includes(Number(g.season))&&N(g.homeScore)!==null&&N(g.awayScore)!==null).sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
    const raw=[];
@@ -87,14 +116,14 @@
    for(const g of historical){
      const cutoff=String(g.gameDate||"");if(!cutoff)continue;
      const snap=built.snapshots.get(String(g.season)+"|"+cutoff)||new Map();
-     const h=vector(snap,g.homeTeam,g.awayTeam),a=vector(snap,g.awayTeam,g.homeTeam);
+     const h=vector(snap,g.homeTeam,g.awayTeam,5),a=vector(snap,g.awayTeam,g.homeTeam,5);
      if(h)raw.push({g,orientation:"home",v:h.v});
      if(a)raw.push({g,orientation:"away",v:a.v});
    }
    if(!raw.length)throw Error("No historical games have sufficient prior-game data to build pregame ratings.");
-   const scales=current.v.map((_,i)=>std(raw.map(x=>x.v[i])));
+   const scales=current.v.map((_,i)=>std(raw.map(x=>x.v[i]).filter(Number.isFinite)));
    const unique=new Map();
-   for(const x of raw){const d=distance(current.v,x.v,scales);if(d===null)continue;const old=unique.get(String(x.g.id));if(!old||d<old.distance)unique.set(String(x.g.id),{...x,distance:d})}
+   for(const x of raw){const scored=distance(current.v,x.v,scales);if(!scored)continue;const old=unique.get(String(x.g.id));if(!old||scored.distance<old.distance)unique.set(String(x.g.id),{...x,...scored})}
    return [...unique.values()].sort((a,b)=>a.distance-b.distance).slice(0,count).map(x=>({...x,market:marketFor(x.g,lines),similarity:100/(1+x.distance),current}));
  }
  function render(rows){
