@@ -93,7 +93,8 @@
       for(let season=FIRST_SEASON;season<=LAST_SEASON;season++){
         const start=new Date(Date.UTC(season-1,10,1));
         const now=new Date();
-        const localToday=new Date(Date.UTC(now.getFullYear(),now.getMonth(),now.getDate()));\n        const seasonEnd=season===LAST_SEASON?localToday:new Date(Date.UTC(season,3,30));
+        const localToday=new Date(Date.UTC(now.getFullYear(),now.getMonth(),now.getDate()));
+        const seasonEnd=season===LAST_SEASON?localToday:new Date(Date.UTC(season,3,30));
         let cursor=start;
         while(cursor<=seasonEnd){
           const end=new Date(Math.min(addDays(cursor,13).getTime(),seasonEnd.getTime()));
