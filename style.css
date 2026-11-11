@@ -137,3 +137,16 @@ footer{gap:10px;flex-wrap:wrap}
 
 /* Highlight the user-selected scoring cutoff in the Diamond Finder sweep. */
 .highlight-row{background:rgba(103,224,189,.10)}
+
+/* Historical score-frequency histogram: raw vs similarity-weighted */
+.score-histogram{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;align-items:end;min-height:190px;padding:12px 8px 4px;background:#0d1826;border:1px solid var(--line);border-radius:9px;margin:12px 0}
+.score-bin{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:0;gap:4px;height:170px;text-align:center}
+.score-bin-bars{height:105px;width:100%;display:flex;align-items:flex-end;justify-content:center;gap:4px;border-bottom:1px solid #3a4b61}
+.score-bin-bar{width:35%;min-height:2px;border-radius:4px 4px 0 0}
+.score-bin-bar.raw,.score-histogram-legend i.raw{background:#54718f}
+.score-bin-bar.weighted,.score-histogram-legend i.weighted{background:var(--a)}
+.score-bin>b{font-size:10px;white-space:nowrap}
+.score-bin>small{font-size:8px;color:var(--muted);line-height:1.25}
+.score-histogram-legend{display:flex;gap:16px;flex-wrap:wrap;margin:8px 0 4px;color:var(--muted);font-size:10px}
+.score-histogram-legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
+@media(max-width:480px){.score-histogram{gap:3px;padding:8px 3px}.score-bin>b{font-size:8px}.score-bin>small{font-size:7px}.score-bin-bars{gap:2px}}
