@@ -5,6 +5,7 @@
  const mean=a=>a.length?a.reduce((s,x)=>s+x,0)/a.length:null;
  const median=a=>{const z=[...a].sort((x,y)=>x-y),m=Math.floor(z.length/2);return z.length?(z.length%2?z[m]:(z[m-1]+z[m])/2):null};
  const sd=a=>{const m=mean(a);return a.length?Math.sqrt(mean(a.map(x=>(x-m)**2))):null};
+ const quantile=(a,q)=>{const z=[...a].sort((x,y)=>x-y);if(!z.length)return null;const p=(z.length-1)*q,lo=Math.floor(p),hi=Math.ceil(p);return z[lo]+(z[hi]-z[lo])*(p-lo)};
  const fmt=x=>x===null||!Number.isFinite(x)?"—":x.toFixed(1);
  const schedule=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"[]")}catch{return []}};
 
@@ -29,7 +30,7 @@
    const twins=rows.filter(x=>x.similarity>=80).sort((a,b)=>b.similarity-a.similarity);
    const closest=rows.slice().sort((a,b)=>b.similarity-a.similarity).slice(0,5);
    return {n:rows.length,seasons,avgSim,topSim:Math.max(...rows.map(x=>x.similarity)),twins,closest,totals,homes,aways,margins,wins,losses,ties,allUnder150,allHomeUnder80,allAwayUnder80,sdTotal,sdMargin,
-     totalMean:mean(totals),totalMedian:median(totals),totalMin:Math.min(...totals),totalMax:Math.max(...totals),
+     totalMean:mean(totals),totalMedian:median(totals),totalP10:quantile(totals,.10),totalP90:quantile(totals,.90),totalMin:Math.min(...totals),totalMax:Math.max(...totals),
      marginMean:mean(margins),marginMedian:median(margins),marginMin:Math.min(...margins),marginMax:Math.max(...margins),
      homeMean:mean(homes),awayMean:mean(aways)};
  }
@@ -47,7 +48,7 @@
      const aPts=x.orientation==="home"?h:a,bPts=x.orientation==="home"?a:h;
      return '<tr><td>'+esc(String(x.g.gameDate||"").slice(0,10))+'</td><td>'+esc(x.g.homeTeam)+' vs '+esc(x.g.awayTeam)+'</td><td>'+aPts+'–'+bPts+'</td><td>'+fmt(x.similarity)+'%</td></tr>';
    }).join("");
-   const totalHist='<div class="volatility-detail"><h4>Game total distribution</h4><div class="volatility-stats"><span>Mean <b>'+fmt(s.totalMean)+'</b></span><span>Median <b>'+fmt(s.totalMedian)+'</b></span><span>Std. dev. <b>'+fmt(s.sdTotal)+'</b></span><span>Range <b>'+s.totalMin+'–'+s.totalMax+'</b></span></div></div>';
+   const totalHist='<div class="volatility-detail"><h4>Game total distribution</h4><div class="volatility-stats"><span>Mean <b>'+fmt(s.totalMean)+'</b></span><span>Median <b>'+fmt(s.totalMedian)+'</b></span><span>Std. dev. <b>'+fmt(s.sdTotal)+'</b></span><span>10th–90th pct. <b>'+fmt(s.totalP10)+'–'+fmt(s.totalP90)+'</b></span><span>Full range <b>'+s.totalMin+'–'+s.totalMax+'</b></span></div></div>';
    const marginHist='<div class="volatility-detail"><h4>Scoring margin distribution (home team)</h4><div class="volatility-stats"><span>Mean <b>'+fmt(s.marginMean)+'</b></span><span>Median <b>'+fmt(s.marginMedian)+'</b></span><span>Std. dev. <b>'+fmt(s.sdMargin)+'</b></span><span>Range <b>'+fmt(s.marginMin)+' to '+fmt(s.marginMax)+'</b></span></div></div>';
    return '<article class="panel slate-game"><div class="slate-game-head"><div><p class="eyebrow">'+(g.neutralSite?"NEUTRAL SITE":"HOME COURT")+' · RANK #'+(index+1)+'</p><h3>'+esc(g.awayTeam)+' at '+esc(g.homeTeam)+'</h3><p class="muted small">'+esc(new Date(g.startDate).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}))+' · '+s.n+' qualifying historical games · '+s.seasons.length+' seasons</p></div><div class="score">'+fmt(s.avgSim)+'%<small class="muted"> avg similarity</small></div></div>'+
    twinBlock+(notes.length?'<div class="slate-flags">'+notes.map(n=>'<p>• '+esc(n)+'</p>').join("")+'</div>':'')+
@@ -118,7 +119,7 @@
        const g=slate[i];status.textContent="Scanning "+(i+1)+" of "+slate.length+": "+g.awayTeam+" at "+g.homeTeam;
        try{
          const candidates=window.CBBLabScanner.compare(games,g.homeTeam,g.awayTeam,!!g.neutralSite,years);
-         const qualifying=candidates.filter(x=>Number.isFinite(x.similarity)&&x.similarity>=60);
+         const qualifying=candidates.filter(x=>Number.isFinite(x.similarity)&&x.similarity>=80);
          if(qualifying.length<5){results.push({g,insufficient:true,n:qualifying.length});continue}
          results.push({g,s:summary(qualifying)});
        }catch(e){results.push({g,error:e.message})}
@@ -127,9 +128,9 @@
      const valid=rankGames(results.filter(x=>x.s),$("slateSort")?.value||"balanced");
      lastValid=valid;sortKey="balanceScore";sortDir="desc";
      const noData=results.filter(x=>!x.s);
-     const intro='<div class="profilegrid"><div><small>Scheduled games scanned</small><b>'+slate.length+'</b></div><div><small>Games with usable history</small><b>'+valid.length+'</b></div><div><small>Similarity floor</small><b>60%</b></div><div><small>80%+ historical twins</small><b>'+valid.filter(x=>x.s.twins.length).length+'</b></div></div><p class="muted small">Default ranking weights average similarity 40%, total stability 30% and margin stability 30%. Volatility is measured by standard deviation; lower is more consistent. Scores are relative to the games on this slate, not probabilities. All comparisons below 60% are excluded, with at least five qualifying games required.</p>';
-     out.innerHTML=intro+(valid.length?'<p class="muted small">Tap any column heading to sort. Expand a matchup row for distributions, historical twins and closest comparisons.</p>':'<div class="empty">No games on this slate had at least five historical comparisons at or above 60% similarity. No patterns were manufactured.</div>')+
-       (noData.length?'<h3>Insufficient historical comparisons</h3>'+noData.map(x=>'<div class="result-row"><div><b>'+esc(x.g.awayTeam)+' at '+esc(x.g.homeTeam)+'</b><small>'+(x.error?esc(x.error):x.n+' qualifying comparisons; fewer than the five-game minimum')+'</small></div></div>').join(""):"");
+     const intro='<div class="profilegrid"><div><small>Scheduled games scanned</small><b>'+slate.length+'</b></div><div><small>Games with usable history</small><b>'+valid.length+'</b></div><div><small>Similarity floor</small><b>80%</b></div><div><small>80%+ historical twins</small><b>'+valid.filter(x=>x.s.twins.length).length+'</b></div></div><p class="muted small">Default ranking weights average similarity 40%, total stability 30% and margin stability 30%. Volatility is measured by standard deviation; lower is more consistent. Scores are relative to the games on this slate, not probabilities. Only 80%+ absolute matches that pass the five-possession pace and 12-point scoring-environment screens are included; each team needs at least five completed games, with at least five qualifying historical comps required.</p>';
+     out.innerHTML=intro+(valid.length?'<p class="muted small">Tap any column heading to sort. Expand a matchup row for distributions, historical twins and closest comparisons.</p>':'<div class="empty">No games on this slate had at least five historical comparisons at or above 80% similarity after scoring-environment filters. No patterns were manufactured.</div>')+
+       (noData.length?'<h3>Insufficient historical comparisons</h3>'+noData.map(x=>'<div class="result-row"><div><b>'+esc(x.g.awayTeam)+' at '+esc(x.g.homeTeam)+'</b><small>'+(x.error?esc(x.error):x.n+' strong comparisons at 80%+; fewer than the five-game minimum')+'</small></div></div>').join(""):"");
      renderTable();
      status.textContent="Scan complete · "+slate.length+" games reviewed · "+valid.length+" reportable samples. Sorted by "+($("slateSort")?.selectedOptions[0]?.textContent||"overall balance")+". No market lines used.";
    }catch(e){out.className="results empty";out.textContent=e.message;status.textContent="Scan could not complete."}
