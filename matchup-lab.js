@@ -89,17 +89,22 @@
    const entries=(rec?.lines||[]).filter(x=>N(x.spread)!==null||N(x.overUnder)!==null);
    return {spread:entries.length?mean(entries.map(x=>N(x.spread)).filter(Number.isFinite)):null,total:entries.length?mean(entries.map(x=>N(x.overUnder)).filter(Number.isFinite)):null,providers:entries.length};
  }
- function candidates(games,teamA,teamB,years,count,lines,neutral){
-   const built=buildSnapshots(games);
+ let snapshotCacheGames=null,snapshotCache=new Map();
+ function candidates(games,teamA,teamB,years,count,spread,total,neutral){
    const seasons=[...new Set(games.map(g=>Number(g.season)).filter(Number.isFinite))].sort((a,b)=>a-b);
    const currentSeason=seasons[seasons.length-1];if(!currentSeason)throw Error("No imported season data found.");
-   const currentGames=games.filter(g=>Number(g.season)===currentSeason&&N(g.homeScore)!==null&&N(g.awayScore)!==null).sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
+   const targetSeasons=years==="all"?seasons.filter(s=>s<currentSeason):seasons.filter(s=>s<currentSeason&&s>=currentSeason-Number(years));
+   const relevantGames=games.filter(g=>targetSeasons.includes(Number(g.season))||Number(g.season)===currentSeason);
+   if(snapshotCacheGames!==games){snapshotCacheGames=games;snapshotCache.clear()}
+   const cacheKey=years;
+   if(!snapshotCache.has(cacheKey))snapshotCache.set(cacheKey,buildSnapshots(relevantGames));
+   const built=snapshotCache.get(cacheKey);
+   const currentGames=relevantGames.filter(g=>Number(g.season)===currentSeason&&N(g.homeScore)!==null&&N(g.awayScore)!==null).sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
    if(!currentGames.length)throw Error("No completed games in the current season. Import current-season game data first.");
    const currentSnap=built.seasonFinal.get(String(currentSeason))||new Map();
    const current=vector(currentSnap,teamA,teamB,1);
    if(!current)throw Error("Could not build a matchup profile. Each team needs at least one completed game with pace data.");
-   const targetSeasons=years==="all"?seasons.filter(s=>s<currentSeason):seasons.filter(s=>s<currentSeason&&s>=currentSeason-Number(years));
-   const historical=games.filter(g=>targetSeasons.includes(Number(g.season))&&N(g.homeScore)!==null&&N(g.awayScore)!==null).sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
+   const historical=relevantGames.filter(g=>targetSeasons.includes(Number(g.season))&&N(g.homeScore)!==null&&N(g.awayScore)!==null).sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
    const raw=[];
    // Rebuild a strictly pregame snapshot for each historical matchup.
    for(const g of historical){
@@ -115,7 +120,7 @@
    const scales=current.v.map((_,i)=>std(raw.map(x=>x.v[i]).filter(Number.isFinite)));
    const unique=new Map();
    for(const x of raw){const scored=distance(current.v,x.v,scales);if(!scored)continue;const old=unique.get(String(x.g.id));if(!old||scored.distance<old.distance)unique.set(String(x.g.id),{...x,...scored})}
-   return [...unique.values()].sort((a,b)=>a.distance-b.distance).slice(0,count).map(x=>({...x,market:marketFor(x.g,lines),similarity:100/(1+x.distance),current}));
+   return [...unique.values()].sort((a,b)=>a.distance-b.distance).slice(0,count).map(x=>({...x,market:{spread,total,providers:0},similarity:100/(1+x.distance),current}));
  }
  function render(rows){
    const el=$("matchupCompsResults");
@@ -171,11 +176,12 @@
    el.innerHTML='<div class="profilegrid"><div><small>Team A adjusted offense</small><b>'+c.a.o.toFixed(1)+'</b><small>Pts / 100 poss · '+c.a.n+' GP</small></div><div><small>Team A adjusted defense</small><b>'+c.a.d.toFixed(1)+'</b><small>Pts allowed / 100 poss · '+c.a.n+' GP</small></div><div><small>Team A adjusted pace</small><b>'+c.a.p.toFixed(1)+'</b><small>Possessions / game</small></div><div><small>Team B adjusted offense</small><b>'+c.b.o.toFixed(1)+'</b><small>Pts / 100 poss · '+c.b.n+' GP</small></div><div><small>Team B adjusted defense</small><b>'+c.b.d.toFixed(1)+'</b><small>Pts allowed / 100 poss · '+c.b.n+' GP</small></div><div><small>Team B adjusted pace</small><b>'+c.b.p.toFixed(1)+'</b><small>Possessions / game</small></div></div><div class="profilegrid"><div><small>Team A win rate</small><b>'+rate(win,loss,win+loss)+'</b><small>Ties '+tie+'</small></div><div><small>Team A ATS hit rate</small><b>'+rate(atsW,atsL,atsW+atsL)+'</b><small>Pushes '+atsP+' · no-line '+(rows.length-atsN)+'</small></div><div><small>Over hit rate</small><b>'+rate(ouW,ouL,ouW+ouL)+'</b><small>Pushes '+ouP+' · no-line '+(rows.length-ouN)+'</small></div><div><small>Historical comps</small><b>'+rows.length+'</b><small>Top closest matches</small></div></div>'+tierTable+outcomePanel+'<h4>Closest matchup fingerprint breakdown</h4><div class="profilegrid">'+breakdown+'</div><p class="muted small">Adaptive filter: current teams can qualify with one completed game; historical comparisons need at least three prior games per team. At least 12 of 30 team-feature comparisons must be present, with at least five from each team. Small samples are regressed toward league averages. All available profile features are standardized against the historical comparison pool; missing metrics are excluded, never zero-filled. All 15 metrics per team contribute when available: adjusted offense, adjusted defense, pace, eFG%, turnover rate, offensive rebound rate, free-throw rate, 3PA rate, 3P%, 2P%, opponent eFG%, opponent turnover rate, opponent 3PA rate, opponent 3P% and opponent 2P%. The two-team fingerprint therefore contains up to 30 weighted features; missing values are excluded rather than treated as zero. Similarity is a statistical distance, not a win probability. Historical snapshots use only games completed before each matchup. Current fingerprint data coverage: '+currentCoverage+'%. The spread and total are the values you entered; historical closing-line imports are not used for these percentages. Venue matching uses same-site historical games when at least five qualify; otherwise it broadens to both venue types.</p>'+cards;
  }
  async function init(){
+   let savedGames=[];
    const refreshTeams=async()=>{
-     const [games,lines]=await Promise.all([read("games"),read("lines")]);
+     const games=await read("games");savedGames=games;
      const teams=[...new Set(games.flatMap(g=>[g.homeTeam,g.awayTeam]).filter(Boolean))].sort();
      ["hmTeamA","hmTeamB"].forEach((id,i)=>{const e=$(id),old=e.value;e.innerHTML='<option value="">Select a team</option>'+teams.map(t=>'<option>'+t.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))+'</option>').join("");const preferred=i===0?"Kentucky":"Kansas";if(teams.includes(old))e.value=old;else if(teams.includes(preferred))e.value=preferred});
-     return {games,lines,teams};
+     return {games,teams};
    };
    await refreshTeams();
    const btn=$("runMatchupComps");if(!btn)return;
@@ -184,12 +190,12 @@
      if(!a||!b||a===b){$("matchupCompsResults").textContent="Choose two different teams.";return}
      btn.disabled=true;btn.textContent="Using saved game data…";
      try{
-       const {games,lines,teams}=await refreshTeams();
+       const games=savedGames,teams=[...new Set(games.flatMap(g=>[g.homeTeam,g.awayTeam]).filter(Boolean))];
        if(!games.length)throw Error("No games are saved in this browser yet. Open Data Center and check the imported game count.");
        if(!teams.includes(a)||!teams.includes(b))throw Error("The selected teams were not found in the refreshed saved dataset. Choose them again.");
        btn.textContent="Building pregame ratings…";
        const spread=N($("hmSpread").value),total=N($("hmTotal").value),neutral=$("hmSite").value==="neutral";
-       const rows=candidates(games,a,b,$("hmYears").value,Number($("hmCount").value),lines,neutral);
+       const rows=candidates(games,a,b,$("hmYears").value,Number($("hmCount").value),spread,total,neutral);
        rows.forEach(x=>{x.market={spread,total,providers:0}});
        render(rows);
      }catch(e){$("matchupCompsResults").className="results empty";$("matchupCompsResults").textContent=e.message}
