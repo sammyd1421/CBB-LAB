@@ -71,7 +71,8 @@
    const entries=(rec?.lines||[]).filter(x=>N(x.spread)!==null||N(x.overUnder)!==null);
    return {spread:entries.length?mean(entries.map(x=>N(x.spread)).filter(Number.isFinite)):null,total:entries.length?mean(entries.map(x=>N(x.overUnder)).filter(Number.isFinite)):null,providers:entries.length};
  }
- function candidates(games,teamA,teamB,years,count,lines){\n   const built=buildSnapshots(games);
+ function candidates(games,teamA,teamB,years,count,lines){
+   const built=buildSnapshots(games);
    const seasons=[...new Set(games.map(g=>Number(g.season)).filter(Number.isFinite))].sort((a,b)=>a-b);
    const currentSeason=seasons[seasons.length-1];if(!currentSeason)throw Error("No imported season data found.");
    const currentGames=games.filter(g=>Number(g.season)===currentSeason&&N(g.homeScore)!==null&&N(g.awayScore)!==null).sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
