@@ -7,8 +7,8 @@
  const sd=a=>{const m=mean(a);return a.length?Math.sqrt(mean(a.map(x=>(x-m)**2))):null};
  const fmt=x=>x===null||!Number.isFinite(x)?"—":x.toFixed(1);
  const schedule=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"[]")}catch{return []}};
- const dayKey=g=>{const d=new Date(g.startDate);return Number.isFinite(d.getTime())?d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"):""};
- function dateInit(){const input=$("slateDate");if(!input)return;const today=new Date(),todayKey=today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");input.value=todayKey}
+ const dayKey=g=>String(g.startDate||"").slice(0,10);
+ function dateInit(){const input=$("slateDate");if(!input)return;const days=[...new Set(schedule().map(dayKey).filter(Boolean))].sort();const today=new Date(),todayKey=today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");input.value=days.includes(todayKey)?todayKey:(days.find(x=>x>=todayKey)||days[days.length-1]||todayKey);}
  function summary(rows){
    const vals=rows.map(x=>({total:Number(x.g.homeScore)+Number(x.g.awayScore),home:x.orientation==="home"?Number(x.g.homeScore):Number(x.g.awayScore),away:x.orientation==="home"?Number(x.g.awayScore):Number(x.g.homeScore)}));
    const totals=vals.map(x=>x.total),homes=vals.map(x=>x.home),aways=vals.map(x=>x.away),margins=vals.map(x=>x.home-x.away);
@@ -38,10 +38,13 @@
  async function scan(){
    const btn=$("runSlateScan"),out=$("slateResults"),status=$("slateStatus"),date=$("slateDate").value;
    if(!date){status.textContent="Choose a slate date.";return}
-   const slate=schedule().filter(g=>dayKey(g)===date&&g.homeTeam&&g.awayTeam&&g.status!=="cancelled").sort((a,b)=>String(a.startDate).localeCompare(String(b.startDate)));
+   const savedSchedule=schedule();
+   if(!savedSchedule.length){out.className="results empty";out.textContent="No schedule is saved on this device. Open Data Center and tap Import / refresh 2026–27 schedule first.";return}
+   const slate=savedSchedule.filter(g=>dayKey(g)===date&&g.homeTeam&&g.awayTeam&&String(g.status).toLowerCase()!=="cancelled").sort((a,b)=>String(a.startDate).localeCompare(String(b.startDate)));
    if(!slate.length){out.className="results empty";out.textContent="No scheduled games found for this date in the locally saved schedule. Import or refresh the schedule in Data Center.";return}
    btn.disabled=true;btn.textContent="Scanning slate…";out.className="results";out.innerHTML="";
    try{
+     if(!window.CBBLabScanner||typeof window.CBBLabScanner.loadGames!=="function")throw Error("The matchup engine did not initialize. Reload CBB LAB; if this persists, contact support.");
      const games=await window.CBBLabScanner.loadGames();
      if(!games.length)throw Error("No historical games are saved in this browser. Import the historical dataset in Data Center first.");
      const years=$("slateYears").value,results=[];
@@ -49,13 +52,13 @@
        const g=slate[i];status.textContent="Scanning "+(i+1)+" of "+slate.length+": "+g.awayTeam+" at "+g.homeTeam;
        try{
          const candidates=window.CBBLabScanner.compare(games,g.homeTeam,g.awayTeam,!!g.neutralSite,years);
-         const qualifying=candidates.filter(x=>x.similarity>=60);
+         const qualifying=candidates.filter(x=>Number.isFinite(x.similarity)&&x.similarity>=60);
          if(qualifying.length<5){results.push({g,insufficient:true,n:qualifying.length});continue}
          results.push({g,s:summary(qualifying)});
        }catch(e){results.push({g,error:e.message})}
        await new Promise(resolve=>setTimeout(resolve,0));
      }
-     const valid=results.filter(x=>x.s).sort((a,b)=>(b.s.n-a.s.n)||(b.s.avgSim-a.s.avgSim)||(a.s.sdTotal-b.s.sdTotal));
+     const valid=results.filter(x=>x.s).sort((a,b)=>(b.s.n-a.s.n)||(b.s.avgSim-a.s.avgSim)||((a.s.sdTotal??Infinity)-(b.s.sdTotal??Infinity)));
      const noData=results.filter(x=>!x.s);
      const intro='<div class="profilegrid"><div><small>Scheduled games scanned</small><b>'+slate.length+'</b></div><div><small>Games with usable history</small><b>'+valid.length+'</b></div><div><small>Similarity floor</small><b>60%</b></div><div><small>Historical line usage</small><b>None</b></div></div><p class="muted small">Ranked by qualifying sample size, then average similarity, then lower total volatility. Each historical matchup below 60% was discarded. A minimum of five qualifying games is required before a pattern is reported.</p>';
      out.innerHTML=intro+(valid.length?valid.map(x=>gameCard(x.g,x.s)).join(""):'<div class="empty">No games on this slate had at least five historical comparisons at or above 60% similarity. No patterns were manufactured.</div>')+
