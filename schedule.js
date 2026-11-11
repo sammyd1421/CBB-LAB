@@ -5,7 +5,7 @@
  const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"[]")}catch{return []}};
  const save=a=>localStorage.setItem(KEY,JSON.stringify(a));
  let schedule=read();
- const dateKey=g=>String(g.startDate||"").slice(0,10);
+ const dateKey=g=>{const d=new Date(g.startDate);if(!Number.isFinite(d.getTime()))return "";return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
  const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
  const sorted=()=>schedule.filter(g=>g.homeTeam&&g.awayTeam&&g.startDate&&g.status!=="cancelled").sort((a,b)=>a.startDate.localeCompare(b.startDate));
  function refreshDates(){
