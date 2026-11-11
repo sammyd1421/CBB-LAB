@@ -53,10 +53,6 @@
    }
    return {snapshots,seasonFinal};
  }
- function snapshotBefore(games,season,cutoff){
-   const hist=games.filter(g=>String(g.season)===String(season)&&String(g.gameDate||"")<cutoff&&N(g.homeScore)!==null&&N(g.awayScore)!==null);
-   return adjustedSnapshot(hist);
- }
  function vector(snap,teamA,teamB){
    const a=snap.get(teamA),b=snap.get(teamB);
    if(!a||!b||a.n<3||b.n<3)return null;
@@ -80,7 +76,7 @@
    const currentSeason=seasons[seasons.length-1];if(!currentSeason)throw Error("No imported season data found.");
    const currentGames=games.filter(g=>Number(g.season)===currentSeason&&N(g.homeScore)!==null&&N(g.awayScore)!==null).sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
    if(!currentGames.length)throw Error("No completed games in the current season. Import current-season game data first.");
-   const currentCutoff="9999";const currentSnap=built.seasonFinal.get(String(currentSeason))||new Map();
+   const currentSnap=built.seasonFinal.get(String(currentSeason))||new Map();
    const current=vector(currentSnap,teamA,teamB);
    if(!current)throw Error("Not enough current-season games (minimum three per team) to build reliable pregame profiles for both selected teams.");
    const targetSeasons=years==="all"?seasons.filter(s=>s<currentSeason):seasons.filter(s=>s<currentSeason&&s>=currentSeason-Number(years));
