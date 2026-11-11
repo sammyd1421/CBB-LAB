@@ -51,7 +51,7 @@ self.addEventListener("fetch",event=>{
   }
   if(/\.(?:js|css|svg|webmanifest)$/.test(url.pathname)){
     event.respondWith((async()=>{
-      const cached=await caches.match(request)||await caches.match(url.pathname);
+      const cached=await caches.match(request)||await caches.match(url.pathname,{ignoreSearch:true});
       const network=fetch(request).then(async response=>{
         if(response&&response.ok){const cache=await caches.open(CACHE_NAME);cache.put(request,response.clone())}
         return response;
