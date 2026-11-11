@@ -31,7 +31,7 @@
     if(key==="tov") return num(f.turnoverRatio);
     if(key==="orb") return num(f.offensiveReboundPct);
     if(key==="ftr") return num(f.freeThrowRate);
-    if(key==="threeRate") {
+    if(key==="threePct") { const x=s.threePointFieldGoals||{}; const made=num(x.made),att=num(x.attempted); return made!==null&&att>0?made/att*100:null; }\n    if(key==="twoPct") { const f=s.fieldGoals||{},t=s.threePointFieldGoals||{}; const made=num(f.made),att=num(f.attempted),tm=num(t.made),ta=num(t.attempted); return made!==null&&att!==null&&ta!==null&&att>ta?(made-tm)/(att-ta)*100:null; }\n    if(key==="threeRate") {
       const att=num(s.threePointFieldGoals?.attempted), fga=num(s.fieldGoals?.attempted);
       return att!==null&&fga>0?att/fga*100:null;
     }
@@ -78,17 +78,17 @@
       const team={
         name:r.team,score:num(stats.points?.total),pace:num(r.pace),
         efg:metric(r,"efg"),tov:metric(r,"tov"),orb:metric(r,"orb"),
-        ftr:metric(r,"ftr"),threeRate:metric(r,"threeRate")
+        ftr:metric(r,"ftr"),threeRate:metric(r,"threeRate"),threePct:metric(r,"threePct"),twoPct:metric(r,"twoPct")
       };
       if(r.isHome) {
         x.homeTeam=r.team; x.homeScore=team.score; x.home_pace=team.pace;
         x.home_efg=team.efg; x.home_tov=team.tov; x.home_orb=team.orb;
-        x.home_ftr=team.ftr; x.home_threeRate=team.threeRate;
+        x.home_ftr=team.ftr; x.home_threeRate=team.threeRate; x.home_threePct=team.threePct; x.home_twoPct=team.twoPct;
         x.awayScore=num(opp.points?.total);
       } else {
         x.awayTeam=r.team; x.awayScore=team.score; x.away_pace=team.pace;
         x.away_efg=team.efg; x.away_tov=team.tov; x.away_orb=team.orb;
-        x.away_ftr=team.ftr; x.away_threeRate=team.threeRate;
+        x.away_ftr=team.ftr; x.away_threeRate=team.threeRate; x.away_threePct=team.threePct; x.away_twoPct=team.twoPct;
         x.homeScore=num(opp.points?.total);
       }
       grouped.set(String(r.gameId),x);
