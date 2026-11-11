@@ -1,124 +1,131 @@
-/* CBB LAB resumable historical CBBD importer. Runs in-browser; API key stays server-side. */
+/* CBBD importer: parses documented GameBoxScoreTeam rows and persists idempotently in IndexedDB. */
 (() => {
-  const button = document.getElementById("importCbbd");
-  if (!button) return;
-  const status = document.getElementById("cbbdProgress");
-  const PROGRESS_KEY = "cbb-lab-cbbd-import-v2";
-  const FIRST_SEASON = 2023; // CBBD season year: 2023 = 2022-23
-  const LAST_SEASON = 2027;  // 2027 = 2026-27 (through today's date)
-  const D1 = new Set([
-    "A-10","ACC","Am. East","America East","American","American Athletic","AAC","ASUN","Atlantic Sun",
-    "Big 12","Big East","Big Sky","Big South","Big Ten","Big West","CAA","CUSA","Conference USA",
-    "Horizon","Horizon League","Ivy","MAAC","Metro Atlantic","MAC","Mid-American","MEAC","MVC",
-    "Missouri Valley","Mountain West","NEC","Northeast","OVC","Ohio Valley","Pac-12","Patriot",
-    "SEC","SoCon","Southern","WCC","West Coast","Southland","Summit","Sun Belt","SWAC","UAC",
-    "United Athletic","WAC"
+  const button=document.getElementById("importCbbd"); if(!button)return;
+  const status=document.getElementById("cbbdProgress");
+  const PROGRESS_KEY="cbb-lab-cbbd-import-v3";
+  const FIRST_SEASON=2023, LAST_SEASON=2027;
+  const D1=new Set([
+    "a10","atlantic10","acc","atlanticcoast","atlanticcoastconference",
+    "americaeast","ameast","americanathletic","american","aac",
+    "asun","atlanticsun","big12","big12conference","bigeast","bigsky","bigsouth",
+    "bigten","big10","bigwest","colonial","caa","conferenceusa","cusa",
+    "horizon","horizonleague","ivy","maac","metroatlantic","mac","midamerican",
+    "meac","missourivalley","mvc","mountainwest","mw","northeast","nec",
+    "ohiovalley","ovc","pac12","pac10","patriot","sec","southeastern",
+    "southeasternconference","socon","southern","wcc","westcoast",
+    "southland","summit","sunbelt","swac","uac","unitedathletic","wac",
+    "westernathletic","westernathleticconference"
   ]);
-  const isD1 = value => {
-    const c=String(value||"").trim().replace(/\s+conference$/i,"").replace(/\s+league$/i,"");
-    return D1.has(c);
-  };
-  const dbOpen = () => new Promise((resolve,reject) => {
-    const req=indexedDB.open("cbb-lab-db",2);
-    req.onupgradeneeded=()=>{
-      if(!req.result.objectStoreNames.contains("games"))req.result.createObjectStore("games",{keyPath:"id"});
-      if(!req.result.objectStoreNames.contains("ratings"))req.result.createObjectStore("ratings",{keyPath:"id"});
-      if(!req.result.objectStoreNames.contains("lines"))req.result.createObjectStore("lines",{keyPath:"gameId"});
-    };
-    req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+  const norm=s=>String(s||"").toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]/g,"").replace(/(conference|league)$/,"");
+  const isD1=s=>D1.has(norm(s));
+  const num=x=>x===null||x===undefined||x===""?null:(Number.isFinite(Number(x))?Number(x):null);
+  const dbOpen=()=>new Promise((resolve,reject)=>{
+    const r=indexedDB.open("cbb-lab-db",2);
+    r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains("games"))d.createObjectStore("games",{keyPath:"id"});if(!d.objectStoreNames.contains("ratings"))d.createObjectStore("ratings",{keyPath:"id"});if(!d.objectStoreNames.contains("lines"))d.createObjectStore("lines",{keyPath:"gameId"});};
+    r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);
   });
   const date=d=>d.toISOString().slice(0,10);
-  const isoStart=d=>date(d)+"T00:00:00Z";
-  const isoEnd=d=>date(d)+"T23:59:59Z";
+  const isoStart=d=>date(d)+"T00:00:00Z",isoEnd=d=>date(d)+"T23:59:59Z";
   const addDays=(d,n)=>{const x=new Date(d);x.setUTCDate(x.getUTCDate()+n);return x;};
-  const num=x=>Number.isFinite(Number(x))?Number(x):null;
-  const metric=(row,key)=>{
-    const s=row.teamStats||{},f=s.fourFactors||{};
-    if(key==="pace")return num(row.pace);
+  const metric=(stats,key)=>{
+    const f=stats?.fourFactors||{};
     if(key==="efg")return num(f.effectiveFieldGoalPct);
     if(key==="tov")return num(f.turnoverRatio);
     if(key==="orb")return num(f.offensiveReboundPct);
     if(key==="ftr")return num(f.freeThrowRate);
-    if(key==="threePct"){const x=s.threePointFieldGoals||{},m=num(x.made),a=num(x.attempted);return m!==null&&a>0?m/a*100:null;}
-    if(key==="twoPct"){const f=s.fieldGoals||{},t=s.threePointFieldGoals||{},m=num(f.made),a=num(f.attempted),tm=num(t.made),ta=num(t.attempted);return m!==null&&a!==null&&ta!==null&&a>ta?(m-tm)/(a-ta)*100:null;}
-    if(key==="threeRate"){const a=num(s.threePointFieldGoals?.attempted),fga=num(s.fieldGoals?.attempted);return a!==null&&fga>0?a/fga*100:null;}
+    if(key==="threePct")return num(stats?.threePointFieldGoals?.pct) ?? (()=>{const x=stats?.threePointFieldGoals||{};return num(x.made)!==null&&num(x.attempted)>0?num(x.made)/num(x.attempted)*100:null;})();
+    if(key==="twoPct")return num(stats?.twoPointFieldGoals?.pct) ?? (()=>{const x=stats?.twoPointFieldGoals||{};return num(x.made)!==null&&num(x.attempted)>0?num(x.made)/num(x.attempted)*100:null;})();
+    if(key==="threeRate"){const a=num(stats?.threePointFieldGoals?.attempted),fga=num(stats?.fieldGoals?.attempted);return a!==null&&fga>0?a/fga*100:null;}
     return null;
   };
   const saveBatch=async rows=>{
     if(!rows.length)return;
     const db=await dbOpen();
-    await new Promise((resolve,reject)=>{
-      const tx=db.transaction("games","readwrite"),store=tx.objectStore("games");
-      rows.forEach(g=>store.put(g));tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
-    });db.close();
+    await new Promise((resolve,reject)=>{const tx=db.transaction("games","readwrite"),s=tx.objectStore("games");rows.forEach(g=>s.put(g));tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});
+    db.close();
   };
   const fetchWindow=async(season,start,end)=>{
-    const qs=new URLSearchParams({resource:"games/teams",season:String(season),seasonType:"regular",startDateRange:isoStart(start),endDateRange:isoEnd(end)});
-    const response=await fetch("/api/cbbd?"+qs.toString(),{headers:{Accept:"application/json"}});
-    if(!response.ok){let message="HTTP "+response.status;try{const e=await response.json();message=e.error||message;}catch{}throw new Error("Season "+season+" ("+(season-1)+"-"+String(season).slice(-2)+"): "+message);}
+    const q=new URLSearchParams({resource:"games/teams",season:String(season),seasonType:"regular",startDateRange:isoStart(start),endDateRange:isoEnd(end)});
+    const response=await fetch("/api/cbbd?"+q.toString(),{headers:{Accept:"application/json"}});
+    if(!response.ok){let detail="HTTP "+response.status;try{const e=await response.json();detail=e.error||e.message||detail;}catch{}throw Error("CBBD request failed ("+detail+"). Check the server API key and quota.");}
     const rows=await response.json();
-    if(!Array.isArray(rows))throw new Error("Unexpected provider response for season "+season+".");
+    if(!Array.isArray(rows))throw Error("CBBD returned a non-array response; import stopped without marking this window complete.");
     if(rows.length>=3000){
-      if((end-start)/86400000<2)throw new Error("Provider's 3,000-row cap reached in a two-day window.");
+      if((end-start)/86400000<1)throw Error("CBBD's 3,000-row response cap was reached in a one-day window.");
       const mid=addDays(start,Math.floor((end-start)/172800000));
       return (await fetchWindow(season,start,mid)).concat(await fetchWindow(season,addDays(mid,1),end));
     }
     return rows;
   };
+  // CBBD /games/teams returns one GameBoxScoreTeam record per team, with
+  // gameId, team/opponent, isHome, teamStats and opponentStats.
   const assemble=(rows,season)=>{
-    const grouped=new Map();
+    const games=new Map();
     rows.forEach(r=>{
-      if(!r||!r.gameId||!isD1(r.conference))return;
-      const x=grouped.get(String(r.gameId))||{id:"cbbd-"+r.gameId,source:"CBBD",sourceGameId:String(r.gameId),season:String(season),gameDate:r.startDate||"",neutralSite:!!r.neutralSite};
-      const stats=r.teamStats||{},opp=r.opponentStats||{};
-      const team={score:num(stats.points?.total),pace:num(r.pace),efg:metric(r,"efg"),tov:metric(r,"tov"),orb:metric(r,"orb"),ftr:metric(r,"ftr"),threeRate:metric(r,"threeRate"),threePct:metric(r,"threePct"),twoPct:metric(r,"twoPct")};
-      if(r.isHome){x.homeTeam=r.team;x.homeScore=team.score;x.home_pace=team.pace;x.home_efg=team.efg;x.home_tov=team.tov;x.home_orb=team.orb;x.home_ftr=team.ftr;x.home_threeRate=team.threeRate;x.home_threePct=team.threePct;x.home_twoPct=team.twoPct;x.awayScore=num(opp.points?.total);}
-      else{x.awayTeam=r.team;x.awayScore=team.score;x.away_pace=team.pace;x.away_efg=team.efg;x.away_tov=team.tov;x.away_orb=team.orb;x.away_ftr=team.ftr;x.away_threeRate=team.threeRate;x.away_threePct=team.threePct;x.away_twoPct=team.twoPct;x.homeScore=num(opp.points?.total);}
-      grouped.set(String(r.gameId),x);
+      if(!r||r.gameId===null||r.gameId===undefined||!isD1(r.conference))return;
+      const own=r.teamStats||{},opp=r.opponentStats||{};
+      const ownScore=num(own.points?.total),oppScore=num(opp.points?.total);
+      if(ownScore===null||oppScore===null||!r.team||!r.opponent)return;
+      const home=!!r.isHome, homeTeam=home?r.team:r.opponent, awayTeam=home?r.opponent:r.team;
+      const homeStats=home?own:opp,awayStats=home?opp:own;
+      const stats=(s,prefix)=>({
+        [prefix+"pace"]:num(r.pace),
+        [prefix+"efg"]:metric(s,"efg"),[prefix+"tov"]:metric(s,"tov"),
+        [prefix+"orb"]:metric(s,"orb"),[prefix+"ftr"]:metric(s,"ftr"),
+        [prefix+"threeRate"]:metric(s,"threeRate"),[prefix+"threePct"]:metric(s,"threePct"),
+        [prefix+"twoPct"]:metric(s,"twoPct")
+      });
+      const game={
+        id:"cbbd-"+r.gameId,source:"CBBD",sourceGameId:String(r.gameId),season:String(season),
+        gameDate:r.startDate||"",neutralSite:!!r.neutralSite,homeTeam,awayTeam,
+        homeScore:home?ownScore:oppScore,awayScore:home?oppScore:ownScore,
+        ...stats(homeStats,"home_"),...stats(awayStats,"away_")
+      };
+      // Preserve a previously stored record if a later row is less complete.
+      const old=games.get(game.id);
+      if(!old||Object.keys(game).filter(k=>game[k]!==null&&game[k]!==undefined&&game[k]!=="").length>
+        Object.keys(old).filter(k=>old[k]!==null&&old[k]!==undefined&&old[k]!=="").length)games.set(game.id,game);
     });
-    return [...grouped.values()].filter(g=>g.homeTeam&&g.awayTeam&&g.homeScore!==null&&g.awayScore!==null);
+    return [...games.values()];
   };
   const readProgress=()=>{try{return JSON.parse(localStorage.getItem(PROGRESS_KEY)||"{}");}catch{return {};}};
   const writeProgress=p=>localStorage.setItem(PROGRESS_KEY,JSON.stringify(p));
   const countBySeason=async()=>{
     const db=await dbOpen(),rows=await new Promise((resolve,reject)=>{const q=db.transaction("games","readonly").objectStore("games").getAll();q.onsuccess=()=>resolve(q.result||[]);q.onerror=()=>reject(q.error);});
-    db.close();const counts={};rows.forEach(g=>counts[g.season]=(counts[g.season]||0)+1);return {total:rows.length,counts};
+    db.close();const counts={};rows.forEach(g=>counts[String(g.season)]=(counts[String(g.season)]||0)+1);return {total:rows.length,counts};
   };
   button.addEventListener("click",async()=>{
     if(button.disabled)return;
-    if(!confirm("Import men's Division I regular-season games for CBBD seasons 2023–2027 (2022-23 through 2026-27 to date)? Completed date windows are saved and skipped on retry. This may use roughly 50–70 API calls from your shared monthly quota. Keep this page open."))return;
+    if(!confirm("Import men's Division I regular-season games for 2022–23 through 2026–27 to date? Saved windows are skipped on retry; games are stored on this device. Historical responses are cached to reduce repeat API calls."))return;
     button.disabled=true;button.textContent="Importing…";
-    const progress=readProgress();let windows=0,added=0;
+    const progress=readProgress();let windows=0,received=0,saved=0;
     try{
       for(let season=FIRST_SEASON;season<=LAST_SEASON;season++){
         const start=new Date(Date.UTC(season-1,10,1));
-        const now=new Date();
-        const localToday=new Date(Date.UTC(now.getFullYear(),now.getMonth(),now.getDate()));
-        const seasonEnd=season===LAST_SEASON?localToday:new Date(Date.UTC(season,3,30));
+        const now=new Date(),today=new Date(Date.UTC(now.getFullYear(),now.getMonth(),now.getDate()));
+        const seasonEnd=season===LAST_SEASON?today:new Date(Date.UTC(season,3,30));
         let cursor=start;
         while(cursor<=seasonEnd){
           const end=new Date(Math.min(addDays(cursor,13).getTime(),seasonEnd.getTime()));
           const key=season+":"+date(cursor)+":"+date(end);
           if(progress[key]){cursor=addDays(end,1);continue;}
-          status.textContent="Importing "+(season-1)+"–"+String(season).slice(-2)+" · "+date(cursor)+" to "+date(end)+" · "+windows+" new windows this run";
-          const raw=await fetchWindow(season,cursor,end);
+          status.textContent="Season "+(season-1)+"–"+String(season).slice(-2)+" · "+date(cursor)+" to "+date(end)+" · fetching";
+          const raw=await fetchWindow(season,cursor,end);received+=raw.length;
           const games=assemble(raw,season);
-          await saveBatch(games);
-          progress[key]=true;writeProgress(progress);
-          added+=games.length;windows++;
+          await saveBatch(games);saved+=games.length;
+          progress[key]=true;writeProgress(progress);windows++;
+          status.textContent="Saved "+saved.toLocaleString()+" games this run · "+received.toLocaleString()+" source rows received";
           cursor=addDays(end,1);
         }
-        const coverage=await countBySeason();
-        status.textContent="Finished "+(season-1)+"–"+String(season).slice(-2)+": "+(coverage.counts[String(season)]||0).toLocaleString()+" games stored. Overall: "+coverage.total.toLocaleString()+".";
       }
       const coverage=await countBySeason();
+      if(!coverage.total)throw Error("The API returned no usable Division I games. No successful import was recorded. Check API access and conference labels.");
       const summary=Array.from({length:LAST_SEASON-FIRST_SEASON+1},(_,i)=>{const s=String(FIRST_SEASON+i);return (Number(s)-1)+"–"+s.slice(-2)+": "+(coverage.counts[s]||0).toLocaleString();}).join(" · ");
-      status.textContent="Import complete · "+coverage.total.toLocaleString()+" total games · "+summary+". Refreshing workspace…";
-      button.textContent="Import complete";
-      setTimeout(()=>location.reload(),1300);
+      status.textContent="Import complete · "+coverage.total.toLocaleString()+" games stored on this device · "+summary+". Refreshing workspace…";
+      button.textContent="Import complete";setTimeout(()=>location.reload(),1000);
     }catch(error){
       const coverage=await countBySeason().catch(()=>({total:0,counts:{}}));
-      status.textContent="Import paused safely after "+windows+" new windows ("+added.toLocaleString()+" games this run). Stored: "+coverage.total.toLocaleString()+". "+error.message+" Completed windows are saved; tap Resume / retry later.";
+      status.textContent="Import paused safely · "+windows+" windows completed · "+coverage.total.toLocaleString()+" games saved. "+error.message+" Tap Resume / retry; completed windows will be skipped.";
       button.disabled=false;button.textContent="Resume / retry import";
     }
   });
