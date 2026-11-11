@@ -134,3 +134,6 @@ footer{gap:10px;flex-wrap:wrap}
   .slate-game .profilegrid{grid-template-columns:minmax(0,1fr)}
   .tab{font-size:11px;padding:11px 6px}
 }
+
+/* Highlight the user-selected scoring cutoff in the Diamond Finder sweep. */
+.highlight-row{background:rgba(103,224,189,.10)}
