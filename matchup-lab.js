@@ -131,7 +131,7 @@
    if(!raw.length)throw Error("No historical games have sufficient prior-game data for this venue. Try the other site setting or import more history.");
    const unique=new Map();
    for(const x of raw){const scored=distance(current.v,x.v);if(!scored)continue;const env=environment(x.profile);const old=unique.get(String(x.g.id));if(!old||scored.distance<old.distance)unique.set(String(x.g.id),{...x,...scored,expectedPace:env.pace,expectedTotal:env.total,paceGap:Math.abs(env.pace-currentEnvironment.pace),totalGap:Math.abs(env.total-currentEnvironment.total)})}
-   const allRanked=[...unique.values()].sort((a,b)=>a.distance-b.distance).map(x=>({...x,market:{spread,total,providers:0},similarity:(window.CBBLabSimilarityScale?.score||((d)=>100*Math.exp(-0.5*d*d)))(x.distance),current}));
+   const allRanked=[...unique.values()].sort((a,b)=>a.distance-b.distance).map(x=>({...x,market:{spread,total,providers:0},similarity:(window.CBBLabSimilarityScale?.score||((d)=>d===0?100:Math.min(99.9,100*Math.exp(-0.5*d*d))))(x.distance),current}));
    const compatible=allRanked.filter(x=>x.paceGap<=5&&x.totalGap<=12);
    const tier=(lo,hi)=>compatible.filter(x=>x.similarity>=lo&&x.similarity<hi).length;
    const audit={eligible:compatible.length,environmentRejected:allRanked.length-compatible.length,currentExpectedTotal:currentEnvironment.total,currentExpectedPace:currentEnvironment.pace,seasons:targetSeasons.slice().sort((a,b)=>a-b),tier50_59:tier(50,60),tier60_69:tier(60,70),tier70_79:tier(70,80),tier80_89:tier(80,90),tier90_94:tier(90,95),tier95_100:tier(95,100.000001),atLeast60:tier(60,100.000001),pctAtLeast60:compatible.length?100*tier(60,100.000001)/compatible.length:0,max:compatible[0]?.similarity??null,meanCoverage:compatible.length?100*mean(compatible.map(x=>x.coverage)):0};
@@ -156,7 +156,7 @@
      if(x.market.total!==null){ouN++;const d=total-x.market.total;if(Math.abs(d)<.001){ouP++;result.push("total push")}else if(d>0){ouW++;result.push("over")}else{ouL++;result.push("under")}}
      const spread=x.market.spread===null?"No spread":"Team A spread "+x.market.spread.toFixed(1);
      const marketTotal=x.market.total===null?"No total":"Total "+x.market.total.toFixed(1);
-     return '<div class="result-row"><div><b>'+g.homeTeam+' vs '+g.awayTeam+'</b><small>'+g.season+' · '+String(g.gameDate||"").slice(0,10)+' · '+g.homeScore+'–'+g.awayScore+' · '+spread+' · '+marketTotal+'</small><small>'+outcome+(result.length?" · "+result.join(" · "):"")+'</small></div><span class="score '+(x.similarity>=80?"strongmatch":"")+'">'+x.similarity.toFixed(0)+'%'+(x.similarity>=95?' · NEARLY IDENTICAL':x.similarity>=90?' · ELITE':x.similarity>=80?' · STRONG':x.similarity>=70?' · ABOVE AVG':x.similarity>=60?' · MODERATE':' · WEAK')+'</span></div>';
+     return '<div class="result-row"><div><b>'+g.homeTeam+' vs '+g.awayTeam+'</b><small>'+g.season+' · '+String(g.gameDate||"").slice(0,10)+' · '+g.homeScore+'–'+g.awayScore+' · '+spread+' · '+marketTotal+'</small><small>'+outcome+(result.length?" · "+result.join(" · "):"")+'</small></div><span class="score '+(x.similarity>=80?"strongmatch":"")+'">'+x.similarity.toFixed(1)+'%'+(x.similarity>=95?' · NEARLY IDENTICAL':x.similarity>=90?' · ELITE':x.similarity>=80?' · STRONG':x.similarity>=70?' · ABOVE AVG':x.similarity>=60?' · MODERATE':' · WEAK')+'</span></div>';
    }).join("");
    const rate=(w,l,n)=>n?(100*w/n).toFixed(1)+"% · "+n+" graded":"— · no lines";
    const c=rows[0].current,top=rows[0];
