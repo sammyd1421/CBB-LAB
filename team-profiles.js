@@ -2,12 +2,13 @@
 (function(g){
  const N=x=>x===null||x===undefined||x===""?null:(Number.isFinite(Number(x))?Number(x):null);
  const mean=a=>{const v=a.filter(Number.isFinite);return v.length?v.reduce((s,x)=>s+x,0)/v.length:null};
+ const pctValue=x=>x!==null&&Math.abs(x)<=1.5?x*100:x;
  const pct=(x,arr,higher=true)=>{const v=arr.filter(Number.isFinite);if(!Number.isFinite(x)||!v.length)return null;const below=v.filter(y=>higher?y<x:y>x).length;const equal=v.filter(y=>y===x).length;return 100*(below+.5*equal)/v.length};
  function build(games){
   const groups=new Map();
   const add=(team,opp,season,game,side,score,oppScore)=>{
    if(!team||!opp||score===null||oppScore===null)return;
-   const own=k=>N(game[side+"_"+k]),other=k=>N(game[(side==="home"?"away":"home")+"_"+k]);
+   const own=k=>pctValue(N(game[side+"_"+k])),other=k=>pctValue(N(game[(side==="home"?"away":"home")+"_"+k]));
    const pace=own("pace")??N(game[side+"_pace"]);
    const row={team,opp,season:String(season),score,oppScore,pace,
     efg:own("efg"),tov:own("tov"),orb:own("orb"),ftr:own("ftr"),threeRate:own("threeRate"),threePct:own("threePct"),twoPct:own("twoPct"),
