@@ -131,7 +131,7 @@
      if(x.market.total!==null){ouN++;const d=total-x.market.total;if(Math.abs(d)<.001){ouP++;result.push("total push")}else if(d>0){ouW++;result.push("over")}else{ouL++;result.push("under")}}
      const spread=x.market.spread===null?"No spread":"Home spread "+x.market.spread.toFixed(1);
      const marketTotal=x.market.total===null?"No total":"Total "+x.market.total.toFixed(1);
-     return '<div class="result-row"><div><b>'+g.homeTeam+' vs '+g.awayTeam+'</b><small>'+g.season+' · '+String(g.gameDate||"").slice(0,10)+' · '+g.homeScore+'–'+g.awayScore+' · '+spread+' · '+marketTotal+'</small><small>'+outcome+(result.length?" · "+result.join(" · "):"")+'</small></div><span class="score">'+x.similarity.toFixed(0)+'%</span></div>';
+     return '<div class="result-row"><div><b>'+g.homeTeam+' vs '+g.awayTeam+'</b><small>'+g.season+' · '+String(g.gameDate||"").slice(0,10)+' · '+g.homeScore+'–'+g.awayScore+' · '+spread+' · '+marketTotal+'</small><small>'+outcome+(result.length?" · "+result.join(" · "):"")+'</small></div><span class="score '+(x.similarity>=80?"strongmatch":"")+'">'+x.similarity.toFixed(0)+'%'+(x.similarity>=80?' · STRONG':'')+'</span></div>';
    }).join("");
    const rate=(w,l,n)=>n?(100*w/n).toFixed(1)+"% · "+n+" graded":"— · no lines";
    const c=rows[0].current,top=rows[0];
