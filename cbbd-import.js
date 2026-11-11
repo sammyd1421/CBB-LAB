@@ -4,10 +4,10 @@
   if (!button) return;
   const status = document.getElementById("cbbdProgress");
   const D1 = new Set([
-    "A-10","ACC","American","American Athletic","AAC","ASUN","Atlantic Sun","Atlantic 10","Big 12","Big East","Big Sky",
+    "A-10","ACC","Am. East","America East","American","American Athletic","AAC","ASUN","Atlantic Sun","Atlantic 10","Big 12","Big East","Big Sky",
     "Big South","Big Ten","Big West","CAA","Colonial","CUSA","Conference USA","Horizon","Horizon League","Ivy","MAAC","Metro","Metro Atlantic","MAC","Mid-American",
     "MEAC","MVC","Missouri Valley","Mountain West","NEC","Northeast","OVC","Ohio Valley","Pac-12","Patriot","SEC","SoCon","Southern","WCC","West Coast",
-    "Southland","Summit","Sun Belt","SWAC","WAC"
+    "Southland","Summit","Sun Belt","SWAC","UAC","United Athletic","WAC"
   ]);
   const dbOpen = () => new Promise((resolve,reject) => {
     const req = indexedDB.open("cbb-lab-db",1);
