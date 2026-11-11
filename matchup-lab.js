@@ -29,7 +29,7 @@
    };
    return [row("home",g.homeTeam,g.awayTeam,hs,as,hp,ap),row("away",g.awayTeam,g.homeTeam,as,hs,ap,hp)];
  }
- function adjustedSnapshot(history){
+ function adjustedSnapshot(history,maxPerTeam=Infinity){
    const rows=history.flatMap(gameRows),byTeam=new Map();
    if(!rows.length)return new Map();
    rows.forEach(r=>{if(!byTeam.has(r.team))byTeam.set(r.team,[]);byTeam.get(r.team).push(r)});
@@ -108,7 +108,8 @@
    const built=snapshotCache.get(cacheKey);
    const currentGames=relevantGames.filter(g=>Number(g.season)===currentSeason&&N(g.homeScore)!==null&&N(g.awayScore)!==null).sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
    if(!currentGames.length)throw Error("No completed games in the current season. Import current-season game data first.");
-   const currentSnap=built.seasonFinal.get(String(currentSeason))||new Map();
+   const currentHistory=relevantGames.filter(g=>N(g.homeScore)!==null&&N(g.awayScore)!==null).sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
+   const currentSnap=adjustedSnapshot(currentHistory,10);
    const current=vector(currentSnap,teamA,teamB,5);
    if(!current)throw Error("A reliable current profile needs at least five completed games with pace data for each team. Import or wait for more current-season results.");
    const environment=p=>{const pace=(p.a.p+p.b.p)/2;const aEff=(p.a.o+p.b.d)/2,bEff=(p.b.o+p.a.d)/2;return {pace,total:pace*(aEff+bEff)/100};};
@@ -128,7 +129,7 @@
    if(!raw.length)throw Error("No historical games have sufficient prior-game data for this venue. Try the other site setting or import more history.");
    const unique=new Map();
    for(const x of raw){const scored=distance(current.v,x.v);if(!scored)continue;const env=environment(x.profile);const old=unique.get(String(x.g.id));if(!old||scored.distance<old.distance)unique.set(String(x.g.id),{...x,...scored,expectedPace:env.pace,expectedTotal:env.total,paceGap:Math.abs(env.pace-currentEnvironment.pace),totalGap:Math.abs(env.total-currentEnvironment.total)})}
-   const allRanked=[...unique.values()].sort((a,b)=>a.distance-b.distance).map(x=>({...x,market:{spread,total,providers:0},similarity:100*Math.exp(-0.5*x.distance*x.distance),current}));
+   const allRanked=[...unique.values()].sort((a,b)=>a.distance-b.distance).map(x=>({...x,market:{spread,total,providers:0},similarity:(window.CBBLabSimilarityScale?.score||((d)=>100*Math.exp(-0.5*d*d)))(x.distance),current}));
    const compatible=allRanked.filter(x=>x.paceGap<=5&&x.totalGap<=12);
    const tier=(lo,hi)=>compatible.filter(x=>x.similarity>=lo&&x.similarity<hi).length;
    const audit={eligible:compatible.length,environmentRejected:allRanked.length-compatible.length,currentExpectedTotal:currentEnvironment.total,currentExpectedPace:currentEnvironment.pace,seasons:targetSeasons.slice().sort((a,b)=>a-b),tier80_89:tier(80,90),tier90_94:tier(90,95),tier95_100:tier(95,100.000001),atLeast80:tier(80,100.000001),pctAtLeast80:compatible.length?100*tier(80,100.000001)/compatible.length:0,max:compatible[0]?.similarity??null,meanCoverage:compatible.length?100*mean(compatible.map(x=>x.coverage)):0};
