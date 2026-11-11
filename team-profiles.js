@@ -28,7 +28,8 @@
   // Iterative opponent adjustment for efficiency; shrink small samples toward season mean.
   const seasons=[...new Set(out.map(p=>p.season))];
   seasons.forEach(season=>{
-   const ps=out.filter(p=>p.season===season),by=new Map(ps.map(p=>[p.team,p])),leagueO=mean(ps.map(p=>p.offEff)),leagueD=mean(ps.map(p=>p.defEff));\n   ps.forEach(p=>{p.leagueOff=leagueO;p.leagueDef=leagueD});
+   const ps=out.filter(p=>p.season===season),by=new Map(ps.map(p=>[p.team,p])),leagueO=mean(ps.map(p=>p.offEff)),leagueD=mean(ps.map(p=>p.defEff));
+   ps.forEach(p=>{p.leagueOff=leagueO;p.leagueDef=leagueD});
    let current=new Map(ps.map(p=>[p.team,{o:p.offEff,d:p.defEff}]));
    for(let iter=0;iter<8;iter++){
     const next=new Map();
