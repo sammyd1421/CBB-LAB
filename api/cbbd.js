@@ -2,7 +2,9 @@
 // Keep CBBD_API_KEY in Vercel Environment Variables; never expose it to the browser.
 const ALLOWED = {
   games: new Set(["season","seasonType","startDateRange","endDateRange","team","conference","status","tournament"]),
-  "games/teams": new Set(["season","seasonType","startDateRange","endDateRange","team","conference","tournament"])
+  "games/teams": new Set(["season","seasonType","startDateRange","endDateRange","team","conference","tournament"]),
+  "ratings/adjusted": new Set(["season","team","conference"]),
+  "lines": new Set(["season","team","conference","startDateRange","endDateRange"])
 };
 
 export default async function handler(req, res) {
@@ -16,7 +18,7 @@ export default async function handler(req, res) {
   const resource = String(req.query.resource || "");
   const allowedParams = ALLOWED[resource];
   if (!allowedParams) {
-    return res.status(400).json({ error: "Unsupported resource. Allowed: games, games/teams." });
+    return res.status(400).json({ error: "Unsupported resource. Allowed: games, games/teams, ratings/adjusted, lines." });
   }
 
   const apiKey = process.env.CBBD_API_KEY;
