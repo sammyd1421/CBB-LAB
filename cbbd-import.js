@@ -31,7 +31,9 @@
     if(key==="tov") return num(f.turnoverRatio);
     if(key==="orb") return num(f.offensiveReboundPct);
     if(key==="ftr") return num(f.freeThrowRate);
-    if(key==="threePct") { const x=s.threePointFieldGoals||{}; const made=num(x.made),att=num(x.attempted); return made!==null&&att>0?made/att*100:null; }\n    if(key==="twoPct") { const f=s.fieldGoals||{},t=s.threePointFieldGoals||{}; const made=num(f.made),att=num(f.attempted),tm=num(t.made),ta=num(t.attempted); return made!==null&&att!==null&&ta!==null&&att>ta?(made-tm)/(att-ta)*100:null; }\n    if(key==="threeRate") {
+    if(key==="threePct") { const x=s.threePointFieldGoals||{}; const made=num(x.made),att=num(x.attempted); return made!==null&&att>0?made/att*100:null; }
+    if(key==="twoPct") { const f=s.fieldGoals||{},t=s.threePointFieldGoals||{}; const made=num(f.made),att=num(f.attempted),tm=num(t.made),ta=num(t.attempted); return made!==null&&att!==null&&ta!==null&&att>ta?(made-tm)/(att-ta)*100:null; }
+    if(key==="threeRate") {
       const att=num(s.threePointFieldGoals?.attempted), fga=num(s.fieldGoals?.attempted);
       return att!==null&&fga>0?att/fga*100:null;
     }
