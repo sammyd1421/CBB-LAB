@@ -10,9 +10,11 @@
     "Southland","Summit","Sun Belt","SWAC","UAC","United Athletic","WAC"
   ]);
   const dbOpen = () => new Promise((resolve,reject) => {
-    const req = indexedDB.open("cbb-lab-db",1);
+    const req = indexedDB.open("cbb-lab-db",2);
     req.onupgradeneeded = () => {
       if (!req.result.objectStoreNames.contains("games")) req.result.createObjectStore("games",{keyPath:"id"});
+      if (!req.result.objectStoreNames.contains("ratings")) req.result.createObjectStore("ratings",{keyPath:"id"});
+      if (!req.result.objectStoreNames.contains("lines")) req.result.createObjectStore("lines",{keyPath:"gameId"});
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
