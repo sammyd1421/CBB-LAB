@@ -16,16 +16,16 @@
    ];
  }
  function adjustedSnapshot(history){
-   const rows=history.flatMap(gameRows), teams=[...new Set(rows.map(r=>r.team))];
+   const rows=history.flatMap(gameRows),byTeam=new Map();
    if(!rows.length)return new Map();
-   const lgO=mean(rows.map(r=>r.off)),lgD=mean(rows.map(r=>r.def)),lgP=mean(rows.map(r=>r.pace));
-   const raw=new Map(teams.map(t=>{const a=rows.filter(r=>r.team===t);return [t,{n:a.length,o:mean(a.map(x=>x.off)),d:mean(a.map(x=>x.def)),p:mean(a.map(x=>x.pace))}]}));
+   rows.forEach(r=>{if(!byTeam.has(r.team))byTeam.set(r.team,[]);byTeam.get(r.team).push(r)});
+   const teams=[...byTeam.keys()],lgO=mean(rows.map(r=>r.off)),lgD=mean(rows.map(r=>r.def)),lgP=mean(rows.map(r=>r.pace));
+   const raw=new Map(teams.map(t=>{const a=byTeam.get(t);return [t,{n:a.length,o:mean(a.map(x=>x.off)),d:mean(a.map(x=>x.def)),p:mean(a.map(x=>x.pace))}]}));
    let cur=new Map([...raw].map(([t,x])=>[t,{o:x.o,d:x.d,p:x.p}]));
-   // Iterative opponent adjustment with modest regression toward the league mean.
-   for(let k=0;k<12;k++){
+   for(let k=0;k<10;k++){
      const next=new Map();
      for(const t of teams){
-       const a=rows.filter(r=>r.team===t),n=a.length,base=raw.get(t),w=n/(n+4);
+       const a=byTeam.get(t),n=a.length,w=n/(n+4);
        const o=mean(a.map(r=>r.off-((cur.get(r.opp)?.d??lgD)-lgD)));
        const d=mean(a.map(r=>r.def-((cur.get(r.opp)?.o??lgO)-lgO)));
        const p=mean(a.map(r=>r.pace-((cur.get(r.opp)?.p??lgP)-lgP)+lgP));
@@ -34,6 +34,24 @@
      cur=next;
    }
    return cur;
+ }
+ function buildSnapshots(games){
+   const bySeason=new Map();
+   games.filter(g=>N(g.homeScore)!==null&&N(g.awayScore)!==null&&g.gameDate).forEach(g=>{const s=String(g.season);if(!bySeason.has(s))bySeason.set(s,[]);bySeason.get(s).push(g)});
+   const snapshots=new Map(),seasonFinal=new Map();
+   for(const [season,list] of bySeason){
+     list.sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
+     let prior=[];
+     for(let i=0;i<list.length;){
+       const date=String(list[i].gameDate),key=season+"|"+date;
+       const snap=adjustedSnapshot(prior);
+       snapshots.set(key,snap);
+       let j=i;while(j<list.length&&String(list[j].gameDate)===date){prior.push(list[j]);j++}
+       i=j;
+     }
+     seasonFinal.set(season,adjustedSnapshot(prior));
+   }
+   return {snapshots,seasonFinal};
  }
  function snapshotBefore(games,season,cutoff){
    const hist=games.filter(g=>String(g.season)===String(season)&&String(g.gameDate||"")<cutoff&&N(g.homeScore)!==null&&N(g.awayScore)!==null);
@@ -57,12 +75,12 @@
    const entries=(rec?.lines||[]).filter(x=>N(x.spread)!==null||N(x.overUnder)!==null);
    return {spread:entries.length?mean(entries.map(x=>N(x.spread)).filter(Number.isFinite)):null,total:entries.length?mean(entries.map(x=>N(x.overUnder)).filter(Number.isFinite)):null,providers:entries.length};
  }
- function candidates(games,teamA,teamB,years,count,lines){
+ function candidates(games,teamA,teamB,years,count,lines){\n   const built=buildSnapshots(games);
    const seasons=[...new Set(games.map(g=>Number(g.season)).filter(Number.isFinite))].sort((a,b)=>a-b);
    const currentSeason=seasons[seasons.length-1];if(!currentSeason)throw Error("No imported season data found.");
    const currentGames=games.filter(g=>Number(g.season)===currentSeason&&N(g.homeScore)!==null&&N(g.awayScore)!==null).sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
    if(!currentGames.length)throw Error("No completed games in the current season. Import current-season game data first.");
-   const currentCutoff="9999";const currentSnap=adjustedSnapshot(currentGames);
+   const currentCutoff="9999";const currentSnap=built.seasonFinal.get(String(currentSeason))||new Map();
    const current=vector(currentSnap,teamA,teamB);
    if(!current)throw Error("Not enough current-season games (minimum three per team) to build reliable pregame profiles for both selected teams.");
    const targetSeasons=years==="all"?seasons.filter(s=>s<currentSeason):seasons.filter(s=>s<currentSeason&&s>=currentSeason-Number(years));
@@ -71,7 +89,7 @@
    // Rebuild a strictly pregame snapshot for each historical matchup.
    for(const g of historical){
      const cutoff=String(g.gameDate||"");if(!cutoff)continue;
-     const snap=snapshotBefore(games,String(g.season),cutoff);
+     const snap=built.snapshots.get(String(g.season)+"|"+cutoff)||new Map();
      const h=vector(snap,g.homeTeam,g.awayTeam),a=vector(snap,g.awayTeam,g.homeTeam);
      if(h)raw.push({g,orientation:"home",v:h.v});
      if(a)raw.push({g,orientation:"away",v:a.v});
