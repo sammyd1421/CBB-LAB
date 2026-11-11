@@ -61,7 +61,7 @@
    let sum=0,weight=0,used=0;
    const details={efficiency:{sum:0,w:0},pace:{sum:0,w:0},shooting:{sum:0,w:0},rebounding:{sum:0,w:0},ballSecurity:{sum:0,w:0},defense:{sum:0,w:0},shotProfile:{sum:0,w:0}};
    for(let i=0;i<v1.length;i++){
-     if(!Number.isFinite(v1[i])||!Number.isFinite(v2[i])||!scales[i])continue;
+     if(!Number.isFinite(v1[i])||!Number.isFinite(v2[i])||!FEATURE_SCALES[i%FEATURE_KEYS.length])continue;
      const j=i%FEATURE_KEYS.length,k=FEATURE_KEYS[j],w=FEATURE_WEIGHTS[j];
      const scale=FEATURE_SCALES[j],z=Math.pow((v1[i]-v2[i])/scale,2),group=({o:"efficiency",d:"efficiency",p:"pace",efg:"shooting",tov:"ballSecurity",orb:"rebounding",ftr:"shotProfile",threeRate:"shotProfile",threePct:"shooting",twoPct:"shooting",oppEfg:"defense",oppTov:"defense",oppThreeRate:"defense",oppThreePct:"defense",oppTwoPct:"defense"})[k];
      sum+=w*z;weight+=w;used++;details[group].sum+=w*z;details[group].w+=w;
