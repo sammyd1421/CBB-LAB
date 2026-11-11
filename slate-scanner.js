@@ -7,8 +7,15 @@
  const sd=a=>{const m=mean(a);return a.length?Math.sqrt(mean(a.map(x=>(x-m)**2))):null};
  const fmt=x=>x===null||!Number.isFinite(x)?"—":x.toFixed(1);
  const schedule=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"[]")}catch{return []}};
- const dayKey=g=>String(g.startDate||"").slice(0,10);
- function dateInit(){const input=$("slateDate");if(!input)return;const days=[...new Set(schedule().map(dayKey).filter(Boolean))].sort();const today=new Date(),todayKey=today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");input.value=days.includes(todayKey)?todayKey:(days.find(x=>x>=todayKey)||days[days.length-1]||todayKey);}
+
+ const stateZones={AL:"America/Chicago",AK:"America/Anchorage",AZ:"America/Phoenix",AR:"America/Chicago",CA:"America/Los_Angeles",CO:"America/Denver",CT:"America/New_York",DE:"America/New_York",FL:"America/New_York",GA:"America/New_York",IA:"America/Chicago",ID:"America/Boise",IL:"America/Chicago",IN:"America/Indiana/Indianapolis",KS:"America/Chicago",KY:"America/New_York",LA:"America/Chicago",MA:"America/New_York",MD:"America/New_York",ME:"America/New_York",MI:"America/Detroit",MN:"America/Chicago",MO:"America/Chicago",MS:"America/Chicago",MT:"America/Denver",NC:"America/New_York",ND:"America/Chicago",NE:"America/Chicago",NH:"America/New_York",NJ:"America/New_York",NM:"America/Denver",NV:"America/Los_Angeles",NY:"America/New_York",OH:"America/New_York",OK:"America/Chicago",OR:"America/Los_Angeles",PA:"America/New_York",RI:"America/New_York",SC:"America/New_York",SD:"America/Chicago",TN:"America/Chicago",TX:"America/Chicago",UT:"America/Denver",VA:"America/New_York",VT:"America/New_York",WA:"America/Los_Angeles",WI:"America/Chicago",WV:"America/New_York",WY:"America/Denver",DC:"America/New_York"};
+ const zoneFor=g=>{const st=String(g.state||"").trim().toUpperCase();let z=stateZones[st];const city=String(g.city||"").toLowerCase();if(st==="FL"&&/pensacola|tallahassee|panama city/.test(city))z="America/Chicago";if(st==="TN"&&/memphis|nashville|clarksville|jackson/.test(city))z="America/Chicago";if(st==="IN"&&/evansville|gary|hammond|south bend|fort wayne/.test(city))z="America/Indiana/Indianapolis";if(st==="KY"&&/bowling green|paducah|owensboro/.test(city))z="America/Chicago";if(st==="ID"&&/boise|twin falls|pocatello|idaho falls/.test(city))z="America/Boise";return z||null};
+ const gameDateKey=g=>{const raw=String(g.startDate||"");if(/^\\d{4}-\\d{2}-\\d{2}$/.test(raw))return raw;const d=new Date(raw);if(!Number.isFinite(d.getTime()))return "";const zone=zoneFor(g);if(!zone)return raw.slice(0,10);const p=new Intl.DateTimeFormat("en-US",{timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d);const v=Object.fromEntries(p.map(x=>[x.type,x.value]));return v.year+"-"+v.month+"-"+v.day};
+ const gameTimeLabel=g=>{const raw=String(g.startDate||"");if(!raw||g.startTimeTbd)return "Time TBD";const d=new Date(raw);if(!Number.isFinite(d.getTime()))return "Time TBD";const zone=zoneFor(g);return new Intl.DateTimeFormat("en-US",{timeZone:zone||undefined,hour:"numeric",minute:"2-digit"}).format(d)};
+ const isFinished=g=>/^(final|completed|complete|cancelled|canceled|postponed)$/i.test(String(g.status||"").trim());
+
+ const dayKey=gameDateKey;
+ function dateInit(){const input=$("slateDate");if(!input)return;const today=new Date(),todayKey=today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");if(!input.value)input.value=todayKey;}
  function summary(rows){
    const vals=rows.map(x=>({total:Number(x.g.homeScore)+Number(x.g.awayScore),home:x.orientation==="home"?Number(x.g.homeScore):Number(x.g.awayScore),away:x.orientation==="home"?Number(x.g.awayScore):Number(x.g.homeScore)}));
    const totals=vals.map(x=>x.total),homes=vals.map(x=>x.home),aways=vals.map(x=>x.away),margins=vals.map(x=>x.home-x.away);
@@ -99,7 +106,7 @@
    if(!date){status.textContent="Choose a slate date.";return}
    const savedSchedule=schedule();
    if(!savedSchedule.length){out.className="results empty";out.textContent="No schedule is saved on this device. Open Data Center and tap Import / refresh 2026–27 schedule first.";return}
-   const slate=savedSchedule.filter(g=>dayKey(g)===date&&g.homeTeam&&g.awayTeam&&String(g.status).toLowerCase()!=="cancelled").sort((a,b)=>String(a.startDate).localeCompare(String(b.startDate)));
+   const slate=savedSchedule.filter(g=>dayKey(g)===date&&g.homeTeam&&g.awayTeam&&!isFinished(g)).sort((a,b)=>String(a.startDate).localeCompare(String(b.startDate)));
    if(!slate.length){out.className="results empty";out.textContent="No scheduled games found for this date in the locally saved schedule. Import or refresh the schedule in Data Center.";return}
    btn.disabled=true;btn.textContent="Scanning slate…";out.className="results";out.innerHTML="";
    try{
