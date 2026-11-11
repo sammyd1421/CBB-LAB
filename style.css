@@ -11,3 +11,19 @@
 
 /* Daily slate scanner */
 .slate-game{margin:14px 0}.slate-game-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.slate-game-head h3{font-size:19px}.slate-flags{background:#132b2a;border:1px solid #285b52;border-radius:8px;padding:8px 12px;margin:10px 0}.slate-flags p{color:#a8f0d9;margin:3px 0;font-size:12px}.slate-game .profilegrid{margin:12px 0}.slate-game .score{font-size:17px;white-space:nowrap}.slate-game .score small{display:block;font-size:9px;text-align:right}@media(max-width:700px){.slate-game-head{align-items:flex-start}}
+
+/* Sortable volatility report and expandable historical comparisons */
+.twin-callout,.no-twin{display:flex;flex-wrap:wrap;gap:7px 12px;align-items:center;padding:10px 12px;border-radius:8px;margin:12px 0}
+.twin-callout{background:#12342f;border:1px solid #347969;color:#a8f0d9}
+.no-twin{background:#17263a;border:1px solid #354c66;color:#d5e3f1}
+.twin-callout span,.no-twin span{font-size:11px;color:var(--muted)}
+.slate-expand{margin:14px 0;border:1px solid var(--line);border-radius:9px;background:#0d1826}
+.slate-expand summary{cursor:pointer;padding:12px;font-size:12px;font-weight:750;display:flex;justify-content:space-between;gap:8px;list-style-position:inside}
+.slate-expand summary span{font-weight:400;color:var(--muted);font-size:10px}
+.slate-expanded{padding:0 12px 12px}
+.slate-expanded h4,.volatility-detail h4{font-size:12px;margin:12px 0 7px}
+.volatility-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.volatility-stats span{background:#142337;border:1px solid var(--line);border-radius:7px;padding:9px;font-size:10px;color:var(--muted)}
+.volatility-stats b{display:block;color:var(--text);font-size:15px;margin-top:3px}
+.volatility-detail{margin:10px 0}
+@media(max-width:700px){.volatility-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.slate-expand summary{align-items:flex-start;flex-direction:column}}
