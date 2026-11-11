@@ -1,10 +1,12 @@
-/* Statistical fingerprints; unavailable features are omitted, never zero-filled. */
-(function(g){const keys=["ppg","oppg","margin","total","pace","efg","tov","orb","ftr","threeRate","threePct","twoPct","adjOff","adjDef","oppEfg","oppThreePct"];const n=v=>v===null||v===undefined||v===""?null:(Number.isFinite(Number(v))?Number(v):null);const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
-function profiles(games){const m=new Map();function add(team,season,sc,opp,game,side){if(!team)return;const k=team+"||"+season;if(!m.has(k))m.set(k,{team,season,games:[],sc:[],opp:[],margin:[],total:[],pace:[],efg:[],tov:[],orb:[],ftr:[],threeRate:[]});const p=m.get(k);p.games.push(game);p.sc.push(sc);p.opp.push(opp);p.margin.push(sc-opp);p.total.push(sc+opp);keys.slice(4).forEach(f=>{const v=n(game[f]??game[f+"_"+side]);if(v!==null)p[f].push(v)});}
-games.forEach(x=>{const h=n(x.homeScore),a=n(x.awayScore);if(h===null||a===null)return;add(x.homeTeam,x.season||"Unknown",h,a,x,"home");add(x.awayTeam,x.season||"Unknown",a,h,x,"away")});return [...m.values()].map(p=>({team:p.team,season:p.season,games:p.games.length,ppg:mean(p.sc),oppg:mean(p.opp),margin:mean(p.margin),total:mean(p.total),pace:mean(p.pace),efg:mean(p.efg),tov:mean(p.tov),orb:mean(p.orb),ftr:mean(p.ftr),threeRate:mean(p.threeRate)}));}
-const scales={ppg:8,oppg:8,margin:10,total:12,pace:4,efg:5,tov:4,orb:6,ftr:8,threeRate:8,threePct:5,twoPct:5,adjOff:6,adjDef:6,oppEfg:5,oppThreePct:5};
-function score(d){return d===0?100:Math.min(99.9,100*Math.exp(-.5*d*d))}
-function dist(a,b){let sum=0,w=0;const wt={ppg:.4,oppg:.4,margin:.8,total:.3,pace:.8,efg:1.2,tov:.9,orb:.8,ftr:.7,threeRate:.8,threePct:1.1,twoPct:.8,adjOff:1.4,adjDef:1.4,oppEfg:1.1,oppThreePct:.9};keys.forEach(k=>{if(!Number.isFinite(a[k])||!Number.isFinite(b[k]))return;sum+=wt[k]*Math.pow((a[k]-b[k])/scales[k],2);w+=wt[k]});return w?Math.sqrt(sum/w):null;}
-function similar(a,all,o={}){return all.filter(p=>p!==a&&(!o.otherTeams||p.team!==a.team)&&(!o.season||p.season===o.season)).map(p=>({profile:p,distance:dist(a,p)})).filter(x=>x.distance!==null).map(x=>({...x,similarity:score(x.distance)})).filter(x=>x.similarity>=60).sort((x,y)=>y.similarity-x.similarity).slice(0,o.count||10);}
-g.CBBLabSimilarityScale={floor:60,strong:80,elite:90,score,grade:s=>s>=95?"Nearly identical":s>=90?"Elite match":s>=80?"Strong match":s>=70?"Above average":s>=60?"Moderate similarity":s>=50?"Weak resemblance":"Poor match",distanceFromScore:s=>Math.sqrt(-2*Math.log(Math.max(s,.000001)/100)),weight:(s,max)=>Math.pow(s/Math.max(max,1),4)};
-g.CBBAnalytics={profiles,dist,similar};})(window);
+/* Shared CBB LAB similarity scale and team-level fingerprint comparison.
+   Uses the same 15-feature set, units, weights and strict coverage gate as Matchup Lab. */
+(function(g){
+ const K=["adjOff","adjDef","pace","efg","tov","orb","ftr","threeRate","threePct","twoPct","oppEfg","oppTov","oppThreeRate","oppThreePct","oppTwoPct"];
+ const W=[1.5,1.5,.9,1.15,.9,.85,.65,.8,1,.9,1.15,.75,.75,.9,.8],S=[6,6,4,5,4,6,8,8,5,5,5,4,8,5,5];
+ const score=d=>d===0?100:Math.min(99.9,100*Math.exp(-.5*d*d));
+ function dist(a,b){let sum=0,w=0,used=0;for(let i=0;i<K.length;i++){const x=a[K[i]],y=b[K[i]];if(!Number.isFinite(x)||!Number.isFinite(y))continue;const z=(x-y)/S[i];sum+=W[i]*z*z;w+=W[i];used++}return used>=12&&w?Math.sqrt(sum/w):null}
+ function profiles(games){if(!g.CBBTeamProfiles?.build)return[];return g.CBBTeamProfiles.build(games).filter(p=>p.games>=5).map(p=>({...p,team:p.team,season:p.season}))}
+ function similar(a,all,o={}){return all.filter(p=>p!==a&&(!o.otherTeams||p.team!==a.team)&&(!o.season||p.season===o.season)).map(p=>({profile:p,distance:dist(a,p)})).filter(x=>x.distance!==null).map(x=>({...x,similarity:score(x.distance)})).filter(x=>x.similarity>=(o.floor||60)).sort((x,y)=>y.similarity-x.similarity).slice(0,o.count||10)}
+ g.CBBLabSimilarityScale={floor:60,strong:80,elite:90,score,grade:s=>s>=95?"Nearly identical":s>=90?"Elite match":s>=80?"Strong match":s>=70?"Above average":s>=60?"Moderate similarity":s>=50?"Weak resemblance":"Poor match",distanceFromScore:s=>Math.sqrt(-2*Math.log(Math.max(s,.000001)/100)),weight:(s,max)=>Math.pow(s/Math.max(max,1),4)};
+ g.CBBAnalytics={profiles,dist,similar};
+})(window);
