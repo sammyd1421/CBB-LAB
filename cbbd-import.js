@@ -71,7 +71,7 @@
       if(!r||!r.gameId||!isD1(r.conference))return;
       const x=grouped.get(String(r.gameId))||{id:"cbbd-"+r.gameId,source:"CBBD",sourceGameId:String(r.gameId),season:String(season),gameDate:r.startDate||"",neutralSite:!!r.neutralSite};
       const stats=r.teamStats||{},opp=r.opponentStats||{};
-      const team={score:num(stats.points?.total),pace:num(r.pace),efg:metric(r,"efg"),tov:metric(r,"tov),orb:metric(r,"orb"),ftr:metric(r,"ftr"),threeRate:metric(r,"threeRate"),threePct:metric(r,"threePct"),twoPct:metric(r,"twoPct")};
+      const team={score:num(stats.points?.total),pace:num(r.pace),efg:metric(r,"efg"),tov:metric(r,"tov"),orb:metric(r,"orb"),ftr:metric(r,"ftr"),threeRate:metric(r,"threeRate"),threePct:metric(r,"threePct"),twoPct:metric(r,"twoPct")};
       if(r.isHome){x.homeTeam=r.team;x.homeScore=team.score;x.home_pace=team.pace;x.home_efg=team.efg;x.home_tov=team.tov;x.home_orb=team.orb;x.home_ftr=team.ftr;x.home_threeRate=team.threeRate;x.home_threePct=team.threePct;x.home_twoPct=team.twoPct;x.awayScore=num(opp.points?.total);}
       else{x.awayTeam=r.team;x.awayScore=team.score;x.away_pace=team.pace;x.away_efg=team.efg;x.away_tov=team.tov;x.away_orb=team.orb;x.away_ftr=team.ftr;x.away_threeRate=team.threeRate;x.away_threePct=team.threePct;x.away_twoPct=team.twoPct;x.homeScore=num(opp.points?.total);}
       grouped.set(String(r.gameId),x);
@@ -92,7 +92,7 @@
     try{
       for(let season=FIRST_SEASON;season<=LAST_SEASON;season++){
         const start=new Date(Date.UTC(season-1,10,1));
-        const seasonEnd=season===LAST_SEASON?new Date():new Date(Date.UTC(season,3,30));
+        const now=new Date();\n        const localToday=new Date(Date.UTC(now.getFullYear(),now.getMonth(),now.getDate()));\n        const seasonEnd=season===LAST_SEASON?localToday:new Date(Date.UTC(season,3,30));
         let cursor=start;
         while(cursor<=seasonEnd){
           const end=new Date(Math.min(addDays(cursor,13).getTime(),seasonEnd.getTime()));
