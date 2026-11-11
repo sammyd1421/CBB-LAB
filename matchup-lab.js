@@ -127,7 +127,7 @@
      let outcome="Team A lost";
      if(teamAMargin>0){win++;outcome="Team A won"}else if(teamAMargin<0)loss++;else{tie++;outcome="Tie"};
      let result=[];
-     if(x.market.spread!==null){atsN++;const aCover=(x.orientation==="home"?homeMargin+x.market.spread:-(homeMargin+x.market.spread));if(Math.abs(aCover)<.001){atsP++;result.push("ATS push")}else if(aCover>0){atsW++;result.push("Team A covered")}else{atsL++;result.push("Team A did not cover")}}
+     if(x.market.spread!==null){atsN++;const aCover=teamAMargin+x.market.spread;if(Math.abs(aCover)<.001){atsP++;result.push("ATS push")}else if(aCover>0){atsW++;result.push("Team A covered")}else{atsL++;result.push("Team A did not cover")}}
      if(x.market.total!==null){ouN++;const d=total-x.market.total;if(Math.abs(d)<.001){ouP++;result.push("total push")}else if(d>0){ouW++;result.push("over")}else{ouL++;result.push("under")}}
      const spread=x.market.spread===null?"No spread":"Team A spread "+x.market.spread.toFixed(1);
      const marketTotal=x.market.total===null?"No total":"Total "+x.market.total.toFixed(1);
@@ -140,7 +140,7 @@
    const outcomeRows=rows.map(x=>{
      const home=N(x.g.homeScore),away=N(x.g.awayScore),total=home+away;
      const aPts=x.orientation==="home"?home:away,bPts=x.orientation==="home"?away:home;
-     const aSpread=x.market.spread===null?null:(x.orientation==="home"?x.market.spread:-x.market.spread);
+     const aSpread=x.market.spread;
      const ats=aSpread===null?null:aPts-bPts+aSpread;
      const ou=x.market.total===null?null:total-x.market.total;
      const aLine=aSpread===null||x.market.total===null?null:(x.market.total-aSpread)/2;
@@ -149,18 +149,18 @@
    });
    const dist=(title,key,meaning)=>{
      const a=outcomeRows.filter(x=>Number.isFinite(x[key]));
-     if(!a.length)return '<div class="dist-block"><h4>'+title+'</h4><p class="muted small">No usable historical lines.</p></div>';
+     if(!a.length)return '<div class="dist-block"><h4>'+title+'</h4><p class="muted small">Enter a spread and total above to generate this distribution.</p></div>';
      const bins=[["10+ below",v=>v<=-10],["6–10 below",v=>v>-10&&v<=-6],["3–6 below",v=>v>-6&&v<=-3],["Within 3",v=>v>-3&&v<3],["3–6 above",v=>v>=3&&v<6],["6–10 above",v=>v>=6&&v<10],["10+ above",v=>v>=10]];
      const den=a.reduce((z,x)=>z+x.w,0);
-     return '<div class="dist-block"><h4>'+title+'</h4><p class="muted small">'+meaning+' · similarity-weighted</p>'+bins.map(([label,test])=>{const hit=a.filter(x=>test(x[key])),p=100*hit.reduce((z,x)=>z+x.w,0)/den;return '<div class="dist-row"><span>'+label+'</span><div class="dist-track"><i style="width:'+p.toFixed(1)+'%"></i></div><b>'+p.toFixed(1)+'%</b><small>'+hit.length+'/'+a.length+'</small></div>'}).join("")+'<small class="muted">'+a.length+' market-graded comps</small></div>';
+     return '<div class="dist-block"><h4>'+title+'</h4><p class="muted small">'+meaning+' · similarity-weighted</p>'+bins.map(([label,test])=>{const hit=a.filter(x=>test(x[key])),p=100*hit.reduce((z,x)=>z+x.w,0)/den;return '<div class="dist-row"><span>'+label+'</span><div class="dist-track"><i style="width:'+p.toFixed(1)+'%"></i></div><b>'+p.toFixed(1)+'%</b><small>'+hit.length+'/'+a.length+'</small></div>'}).join("")+'<small class="muted">'+a.length+' line-graded comps</small></div>';
    };
    const weightedRate=(key)=>{const a=outcomeRows.filter(x=>Number.isFinite(x[key])&&Math.abs(x[key])>.001);if(!a.length)return "—";const den=a.reduce((z,x)=>z+x.w,0);return (100*a.reduce((z,x)=>z+x.w*(x[key]>0?1:0),0)/den).toFixed(1)+"%";}
-   const outcomePanel='<h4>Similarity-weighted outcome distributions</h4><p class="muted small">Closer historical matches carry more weight (similarity relative to the top match, raised to the fourth power). These are historical frequencies, not calibrated probabilities. Positive ATS margin means Team A covered; positive total difference means over.</p><div class="profilegrid"><div><small>Team A ATS hit rate</small><b>'+weightedRate("ats")+'</b><small>Non-push comps with spread lines</small></div><div><small>Over hit rate</small><b>'+weightedRate("ou")+'</b><small>Non-push comps with total lines</small></div><div><small>Team A over implied team total</small><b>'+weightedRate("aTT")+'</b><small>Derived from spread + total</small></div><div><small>Team B over implied team total</small><b>'+weightedRate("bTT")+'</b><small>Derived from spread + total</small></div></div><div class="dist-grid">'+dist("Team A ATS margin","ats","Cover margin") +dist("Game total vs market","ou","Points above/below total") +dist("Team A points vs implied team total","aTT","Points above/below derived team total") +dist("Team B points vs implied team total","bTT","Points above/below derived team total")+'</div>';
+   const outcomePanel='<h4>Similarity-weighted outcome distributions</h4><p class="muted small">Closer historical matches carry more weight (similarity relative to the top match, raised to the fourth power). These are historical frequencies, not calibrated probabilities. Positive ATS margin means Team A covered; positive total difference means over.</p><div class="profilegrid"><div><small>Team A ATS hit rate</small><b>'+weightedRate("ats")+'</b><small>Non-push comps with spread lines</small></div><div><small>Over hit rate</small><b>'+weightedRate("ou")+'</b><small>Non-push comps with total lines</small></div><div><small>Team A over implied team total</small><b>'+weightedRate("aTT")+'</b><small>Derived from spread + total</small></div><div><small>Team B over implied team total</small><b>'+weightedRate("bTT")+'</b><small>Derived from spread + total</small></div></div><div class="dist-grid">'+dist("Team A ATS margin","ats","Cover margin") +dist("Game total vs your line","ou","Points above/below total") +dist("Team A points vs implied team total","aTT","Points above/below derived team total") +dist("Team B points vs implied team total","bTT","Points above/below derived team total")+'</div>';
    const tierDefs=[["90–100%",90,100],["80–89%",80,90],["70–79%",70,80],["60–69%",60,70],["50–59%",50,60],["Below 50%",0,50]];
    const tierStats=tierDefs.map(([label,lo,hi])=>{
      const a=rows.filter(x=>x.similarity>=lo&&x.similarity<hi);
      const ml=a.map(x=>{const h=N(x.g.homeScore),v=N(x.g.awayScore),m=x.orientation==="home"?h-v:v-h;return m===0?null:m>0?1:0}).filter(x=>x!==null);
-     const ats=a.map(x=>{if(x.market.spread===null)return null;const h=N(x.g.homeScore),v=N(x.g.awayScore),hm=h-v;const cover=x.orientation==="home"?hm+x.market.spread:-(hm+x.market.spread);return Math.abs(cover)<.001?null:cover>0?1:0}).filter(x=>x!==null);
+     const ats=a.map(x=>{if(x.market.spread===null)return null;const h=N(x.g.homeScore),v=N(x.g.awayScore),hm=h-v;const teamAMargin=x.orientation==="home"?hm:-hm;const cover=teamAMargin+x.market.spread;return Math.abs(cover)<.001?null:cover>0?1:0}).filter(x=>x!==null);
      const totals=a.map(x=>{if(x.market.total===null)return null;const d=N(x.g.homeScore)+N(x.g.awayScore)-x.market.total;return Math.abs(d)<.001?null:d>0?1:0}).filter(x=>x!==null);
      const pct=z=>z.length?(100*z.reduce((p,q)=>p+q,0)/z.length).toFixed(1)+"%":"—";
      return {label,n:a.length,ml,ats,totals,pml:pct(ml),pats:pct(ats),ptot:pct(totals)};
@@ -182,7 +182,7 @@
    btn.addEventListener("click",async()=>{
      const a=$("hmTeamA").value,b=$("hmTeamB").value;
      if(!a||!b||a===b){$("matchupCompsResults").textContent="Choose two different teams.";return}
-     btn.disabled=true;btn.textContent="Refreshing saved data…";
+     btn.disabled=true;btn.textContent="Using saved game data…";
      try{
        const {games,lines,teams}=await refreshTeams();
        if(!games.length)throw Error("No games are saved in this browser yet. Open Data Center and check the imported game count.");
