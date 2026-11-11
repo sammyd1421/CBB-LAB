@@ -31,6 +31,11 @@ Season IDs use the ending year: 2022 = 2021-22, 2026 = 2025-26, and 2027 = 2026-
 6. Backtests must use only information available before the game being predicted. Use chronological train/validation/test splits.
 7. Keep all API credentials server-side in Vercel environment variables. Never put keys in browser JavaScript, CSV exports, Git commits, or public responses.
 
+## Server-side data access
+`api/cbbd.js` is a same-origin Vercel Function proxy for the CBBD `/games` and `/games/teams` endpoints. It allowlists resources and query parameters and reads `CBBD_API_KEY` only from the server environment. The browser never receives the bearer key. The proxy returns a clear setup error until the key is configured in Vercel.
+
+Before using live API data, add the existing CFBD/CBBD bearer key in Vercel Project Settings → Environment Variables as `CBBD_API_KEY` for Production (and Preview if desired), then redeploy. Do not paste the key into chat, GitHub, source files, or the browser.
+
 ## Database
 `database.sql` defines the normalized SQLite/D1 schema for games, game-team stats, team-season stats, sportsbook lines, import logs and coverage checks. The site currently does not have a live database attached; do not describe the schema as populated or connected.
 
