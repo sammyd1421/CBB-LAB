@@ -242,27 +242,46 @@
    const refreshTeams=async()=>{
      const games=await read("games");savedGames=games;
      const teams=[...new Set(games.flatMap(g=>[g.homeTeam,g.awayTeam]).filter(Boolean))].sort();
-     ["hmTeamA","hmTeamB"].forEach((id,i)=>{const e=$(id),old=e.value;e.innerHTML='<option value="">Select a team</option>'+teams.map(t=>'<option>'+t.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))+'</option>').join("");const preferred=i===0?"Kentucky":"Kansas";if(teams.includes(old))e.value=old;else if(teams.includes(preferred))e.value=preferred});
+     ["hmTeamA","hmTeamB"].forEach((id,i)=>{
+       const e=$(id),oldValue=e.value;
+       e.innerHTML='<option value="">Select a team</option>'+teams.map(t=>'<option>'+t.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))+'</option>').join("");
+       if(teams.includes(oldValue))e.value=oldValue;
+       else {const preferred=i===0?"Kentucky":"Kansas";if(teams.includes(preferred))e.value=preferred;}
+     });
      return {games,teams};
    };
-   await refreshTeams();
    const btn=$("runMatchupComps");if(!btn)return;
+   // Bind immediately so a slow first IndexedDB read cannot leave a dead button.
    btn.addEventListener("click",async()=>{
-     const a=$("hmTeamA").value,b=$("hmTeamB").value;
-     if(!a||!b||a===b){$("matchupCompsResults").textContent="Choose two different teams.";return}
-     btn.disabled=true;btn.textContent="Using saved game data…";
+     const el=$("matchupCompsResults");
+     btn.disabled=true;btn.textContent="Loading saved game data…";
+     el.className="results empty";el.textContent="Refreshing saved games and building the matchup profile…";
      try{
-       const games=savedGames,teams=[...new Set(games.flatMap(g=>[g.homeTeam,g.awayTeam]).filter(Boolean))];
-       if(!games.length)throw Error("No games are saved in this browser yet. Open Data Center and check the imported game count.");
-       if(!teams.includes(a)||!teams.includes(b))throw Error("The selected teams were not found in the refreshed saved dataset. Choose them again.");
+       const {games,teams}=await refreshTeams();
+       const a=$("hmTeamA").value,b=$("hmTeamB").value;
+       if(!games.length)throw Error("No historical games are saved in this browser yet. Open Data Center, confirm the imported game count, and try again.");
+       if(!a||!b||a===b)throw Error("Choose two different teams. Your saved teams have been refreshed above.");
+       if(!teams.includes(a)||!teams.includes(b))throw Error("The selected teams were not found in the saved dataset. Choose them again.");
        btn.textContent="Building pregame ratings…";
        const spread=N($("hmSpread").value),total=N($("hmTotal").value),neutral=$("hmSite").value==="neutral";
        const rows=candidates(games,a,b,$("hmYears").value,$("hmCount").value==="all"?Infinity:Number($("hmCount").value),spread,total,neutral);
        rows.forEach(x=>{x.market={spread,total,providers:0}});
        render(rows);
-     }catch(e){$("matchupCompsResults").className="results empty";$("matchupCompsResults").textContent=e.message}
-     finally{btn.disabled=false;btn.textContent="Generate matchup distributions"}
+     }catch(e){
+       el.className="results empty";
+       el.textContent="Matchup generation could not complete: "+(e?.message||String(e));
+       console.error("CBB LAB matchup generation failed",e);
+     }finally{
+       btn.disabled=false;btn.textContent="Generate matchup distributions";
+     }
    });
+   try{await refreshTeams();}
+   catch(e){
+     const el=$("matchupCompsResults");
+     if(el){el.className="results empty";el.textContent="Saved games are still loading. Tap Generate matchup distributions again in a moment. Details: "+(e?.message||String(e));}
+     console.error("CBB LAB matchup team initialization failed",e);
+   }
  }
+
  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>init().catch(e=>console.error(e)));else init().catch(e=>console.error(e));
 })();
