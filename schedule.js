@@ -5,16 +5,23 @@
  const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"[]")}catch{return []}};
  const save=a=>localStorage.setItem(KEY,JSON.stringify(a));
  let schedule=read();
- const dateKey=g=>{const d=new Date(g.startDate);if(!Number.isFinite(d.getTime()))return "";return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+
+ const stateZones={AL:"America/Chicago",AK:"America/Anchorage",AZ:"America/Phoenix",AR:"America/Chicago",CA:"America/Los_Angeles",CO:"America/Denver",CT:"America/New_York",DE:"America/New_York",FL:"America/New_York",GA:"America/New_York",IA:"America/Chicago",ID:"America/Boise",IL:"America/Chicago",IN:"America/Indiana/Indianapolis",KS:"America/Chicago",KY:"America/New_York",LA:"America/Chicago",MA:"America/New_York",MD:"America/New_York",ME:"America/New_York",MI:"America/Detroit",MN:"America/Chicago",MO:"America/Chicago",MS:"America/Chicago",MT:"America/Denver",NC:"America/New_York",ND:"America/Chicago",NE:"America/Chicago",NH:"America/New_York",NJ:"America/New_York",NM:"America/Denver",NV:"America/Los_Angeles",NY:"America/New_York",OH:"America/New_York",OK:"America/Chicago",OR:"America/Los_Angeles",PA:"America/New_York",RI:"America/New_York",SC:"America/New_York",SD:"America/Chicago",TN:"America/Chicago",TX:"America/Chicago",UT:"America/Denver",VA:"America/New_York",VT:"America/New_York",WA:"America/Los_Angeles",WI:"America/Chicago",WV:"America/New_York",WY:"America/Denver",DC:"America/New_York"};
+ const zoneFor=g=>{const st=String(g.state||"").trim().toUpperCase();let z=stateZones[st];const city=String(g.city||"").toLowerCase();if(st==="FL"&&/pensacola|tallahassee|panama city/.test(city))z="America/Chicago";if(st==="TN"&&/memphis|nashville|clarksville|jackson/.test(city))z="America/Chicago";if(st==="IN"&&/evansville|gary|hammond|south bend|fort wayne/.test(city))z="America/Indiana/Indianapolis";if(st==="KY"&&/bowling green|paducah|owensboro/.test(city))z="America/Chicago";if(st==="ID"&&/boise|twin falls|pocatello|idaho falls/.test(city))z="America/Boise";return z||null};
+ const gameDateKey=g=>{const raw=String(g.startDate||"");if(/^\\d{4}-\\d{2}-\\d{2}$/.test(raw))return raw;const d=new Date(raw);if(!Number.isFinite(d.getTime()))return "";const zone=zoneFor(g);if(!zone)return raw.slice(0,10);const p=new Intl.DateTimeFormat("en-US",{timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d);const v=Object.fromEntries(p.map(x=>[x.type,x.value]));return v.year+"-"+v.month+"-"+v.day};
+ const gameTimeLabel=g=>{const raw=String(g.startDate||"");if(!raw||g.startTimeTbd)return "Time TBD";const d=new Date(raw);if(!Number.isFinite(d.getTime()))return "Time TBD";const zone=zoneFor(g);return new Intl.DateTimeFormat("en-US",{timeZone:zone||undefined,hour:"numeric",minute:"2-digit"}).format(d)};
+ const isFinished=g=>/^(final|completed|complete|cancelled|canceled|postponed)$/i.test(String(g.status||"").trim());
+
+ const dateKey=gameDateKey;
  const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
- const sorted=()=>schedule.filter(g=>g.homeTeam&&g.awayTeam&&g.startDate&&g.status!=="cancelled").sort((a,b)=>a.startDate.localeCompare(b.startDate));
+ const sorted=()=>schedule.filter(g=>g.homeTeam&&g.awayTeam&&g.startDate&&!isFinished(g)).sort((a,b)=>a.startDate.localeCompare(b.startDate));
  function refreshDates(){
    const d=$("scheduleDate"),select=$("scheduleGame");if(!d||!select)return;
    const days=[...new Set(sorted().map(dateKey))].sort(),today=iso(new Date());
    if(!d.value)d.value=days.includes(today)?today:(days.find(x=>x>=today)||days[days.length-1]||today);
    if(days.length&&!days.includes(d.value))d.value=days.find(x=>x>=today)||days[days.length-1];
    const games=sorted().filter(g=>dateKey(g)===d.value);
-   select.innerHTML='<option value="">Select a game ('+games.length+')</option>'+games.map(g=>'<option value="'+esc(g.id)+'">'+esc(g.awayTeam)+' at '+esc(g.homeTeam)+(g.startTimeTbd?' · Time TBD':' · '+new Date(g.startDate).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}))+'</option>').join("");
+   select.innerHTML='<option value="">Select a game ('+games.length+')</option>'+games.map(g=>'<option value="'+esc(g.id)+'">'+esc(g.awayTeam)+' at '+esc(g.homeTeam)+(g.startTimeTbd?' · Time TBD':' · '+gameTimeLabel(g))+'</option>').join("");
    $("scheduleStatus").textContent=schedule.length?schedule.length.toLocaleString()+" schedule games saved on this device · "+days.length+" dates available. Choose a matchup to load the teams.":"Import the season schedule once. Choose a date and matchup to fill Team A, Team B and site automatically; enter your own spread and total below.";
  }
  function setTeam(select,name){
@@ -59,7 +66,7 @@
        const rows=await windowFetch(cursor,end);windows++;
        rows.forEach(g=>{
          if(!g||g.id===null||!g.homeTeam||!g.awayTeam||!g.startDate)return;
-         const row={id:String(g.id),season:2027,startDate:g.startDate,startTimeTbd:!!g.startTimeTbd,homeTeam:g.homeTeam,awayTeam:g.awayTeam,neutralSite:!!g.neutralSite,status:g.status||"scheduled",seasonType:g.seasonType||"",venue:g.venue||"",city:g.city||"",state:g.state||""};
+         const row={id:String(g.id),season:2027,startDate:g.startDate,startTimeTbd:!!(g.startTimeTbd??g.startTimeTBD),homeTeam:g.homeTeam,awayTeam:g.awayTeam,neutralSite:!!g.neutralSite,status:g.status||((g.completed)?"completed":"scheduled"),completed:!!g.completed,seasonType:g.seasonType||"",venue:g.venue||"",city:g.city||"",state:g.state||"",homeTeamId:g.homeTeamId??g.homeId??null,awayTeamId:g.awayTeamId??g.awayId??null};
          incoming.set(row.id,row);
        });
        cursor=addDays(end,1);
