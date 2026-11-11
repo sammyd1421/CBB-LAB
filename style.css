@@ -8,3 +8,6 @@
 .score.strongmatch{color:#0b201b;background:var(--a);border-radius:6px;padding:4px 7px;font-size:10px;white-space:nowrap}
 
 .schedule-picker{margin:14px 0;background:#101e30;border-color:#35506d}.schedule-picker .eyebrow{margin-top:0}.schedule-picker .formgrid{margin-top:10px}
+
+/* Daily slate scanner */
+.slate-game{margin:14px 0}.slate-game-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.slate-game-head h3{font-size:19px}.slate-flags{background:#132b2a;border:1px solid #285b52;border-radius:8px;padding:8px 12px;margin:10px 0}.slate-flags p{color:#a8f0d9;margin:3px 0;font-size:12px}.slate-game .profilegrid{margin:12px 0}.slate-game .score{font-size:17px;white-space:nowrap}.slate-game .score small{display:block;font-size:9px;text-align:right}@media(max-width:700px){.slate-game-head{align-items:flex-start}}
