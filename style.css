@@ -27,3 +27,17 @@
 .volatility-stats b{display:block;color:var(--text);font-size:15px;margin-top:3px}
 .volatility-detail{margin:10px 0}
 @media(max-width:700px){.volatility-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.slate-expand summary{align-items:flex-start;flex-direction:column}}
+
+/* Compact sortable daily slate metrics table */
+.slate-table-wrap{margin:12px 0;border:1px solid var(--line);border-radius:9px}
+.slate-metrics-table{min-width:1120px}
+.slate-metrics-table th{position:sticky;top:0;background:#142337;z-index:1;padding:0}
+.slate-sort-head{background:none;border:0;color:var(--muted);font:inherit;font-size:10px;font-weight:800;padding:11px 9px;white-space:nowrap}
+.slate-sort-head:hover,.slate-sort-head:focus{color:var(--a)}
+.slate-metrics-table td{font-variant-numeric:tabular-nums}
+.slate-metrics-table tbody tr:not(.slate-expand-row):hover{background:#17283b}
+.slate-expand-row td{padding:0;text-align:left}
+.slate-expand-row details>summary{cursor:pointer;padding:9px 12px;color:var(--a);font-size:11px;font-weight:750;background:#101e30;list-style-position:inside}
+.slate-expand-row details[open]>summary{border-bottom:1px solid var(--line)}
+.slate-expand-row .slate-game{margin:0;border:0;border-radius:0}
+.slate-expand-row .slate-game-head{display:none}
