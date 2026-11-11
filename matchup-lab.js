@@ -5,6 +5,12 @@
  const mean=a=>a.length?a.reduce((s,x)=>s+x,0)/a.length:null;
  const db=()=>new Promise((ok,no)=>{const r=indexedDB.open("cbb-lab-db",2);r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
  async function read(store){const d=await db();const a=await new Promise((ok,no)=>{const r=d.transaction(store,"readonly").objectStore(store).getAll();r.onsuccess=()=>ok(r.result||[]);r.onerror=()=>no(r.error)});d.close();return a}
+ // Export the scanner interface immediately. Function declarations are hoisted,
+ // so candidates() is available here without waiting for UI setup/render code.
+ window.CBBLabScanner={
+   loadGames:()=>read("games"),
+   compare:(games,home,away,neutral,years)=>candidates(games,home,away,years,50000,null,null,neutral)
+ };
  const FEATURE_KEYS=["o","d","p","efg","tov","orb","ftr","threeRate","threePct","twoPct","oppEfg","oppTov","oppThreeRate","oppThreePct","oppTwoPct"];
  const FEATURE_LABELS=["Adj offense","Adj defense","Pace","eFG%","Turnover rate","Off. rebound rate","Free-throw rate","3PA rate","3P%","2P%","Opp. eFG%","Opp. turnover rate","Opp. 3PA rate","Opp. 3P%","Opp. 2P%"];
  const FEATURE_GROUPS=["efficiency","efficiency","pace","shooting","ball security","rebounding","shot profile","shot profile","shooting","shooting","defense","defense","defense","defense","defense"];
@@ -192,10 +198,6 @@
    el.className="results";
    el.innerHTML=auditPanel+volatilityPanel+'<div class="profilegrid"><div><small>Team A adjusted offense</small><b>'+c.a.o.toFixed(1)+'</b><small>Pts / 100 poss · '+c.a.n+' GP</small></div><div><small>Team A adjusted defense</small><b>'+c.a.d.toFixed(1)+'</b><small>Pts allowed / 100 poss · '+c.a.n+' GP</small></div><div><small>Team A adjusted pace</small><b>'+c.a.p.toFixed(1)+'</b><small>Possessions / game</small></div><div><small>Team B adjusted offense</small><b>'+c.b.o.toFixed(1)+'</b><small>Pts / 100 poss · '+c.b.n+' GP</small></div><div><small>Team B adjusted defense</small><b>'+c.b.d.toFixed(1)+'</b><small>Pts allowed / 100 poss · '+c.b.n+' GP</small></div><div><small>Team B adjusted pace</small><b>'+c.b.p.toFixed(1)+'</b><small>Possessions / game</small></div></div><div class="profilegrid"><div><small>Team A win rate</small><b>'+rate(win,loss,win+loss)+'</b><small>Ties '+tie+'</small></div><div><small>Team A ATS hit rate</small><b>'+rate(atsW,atsL,atsW+atsL)+'</b><small>Pushes '+atsP+' · no-line '+(rows.length-atsN)+'</small></div><div><small>Over hit rate</small><b>'+rate(ouW,ouL,ouW+ouL)+'</b><small>Pushes '+ouP+' · no-line '+(rows.length-ouN)+'</small></div><div><small>Historical comps</small><b>'+rows.length+'</b><small>Top closest matches</small></div></div>'+tierTable+outcomePanel+'<h4>Closest matchup fingerprint breakdown</h4><div class="profilegrid">'+breakdown+'</div><p class="muted small">Adaptive filter: current teams can qualify with one completed game; historical comparisons need at least three prior games per team. At least 12 of 30 team-feature comparisons must be present, with at least five from each team. Small samples are regressed toward league averages. All available profile features are standardized against the historical comparison pool; missing metrics are excluded, never zero-filled. All 15 metrics per team contribute when available: adjusted offense, adjusted defense, pace, eFG%, turnover rate, offensive rebound rate, free-throw rate, 3PA rate, 3P%, 2P%, opponent eFG%, opponent turnover rate, opponent 3PA rate, opponent 3P% and opponent 2P%. The two-team fingerprint therefore contains up to 30 weighted features; missing values are excluded rather than treated as zero. Similarity is a statistical distance, not a win probability. Historical snapshots use only games completed before each matchup. Current fingerprint data coverage: '+currentCoverage+'%. The spread and total are the values you entered; historical closing-line imports are not used for these percentages. Venue matching uses same-site historical games when at least five qualify; otherwise it broadens to both venue types.</p>'+cards;
  }
- window.CBBLabScanner={
-   loadGames:()=>read("games"),
-   compare:(games,home,away,neutral,years)=>candidates(games,home,away,years,50000,null,null,neutral)
- };
  async function init(){
    let savedGames=[];
    const refreshTeams=async()=>{
