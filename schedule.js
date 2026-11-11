@@ -11,19 +11,27 @@
  function refreshDates(){
    const d=$("scheduleDate"),select=$("scheduleGame");if(!d||!select)return;
    const days=[...new Set(sorted().map(dateKey))].sort(),today=iso(new Date());
-   if(!d.value)d.value=days.includes(today)?today:(days.find(x=>x>=today)||days[0]||today);
-   if(days.length&&!days.includes(d.value))d.value=days.find(x=>x>=today)||days[0];
+   if(!d.value)d.value=days.includes(today)?today:(days.find(x=>x>=today)||days[days.length-1]||today);
+   if(days.length&&!days.includes(d.value))d.value=days.find(x=>x>=today)||days[days.length-1];
    const games=sorted().filter(g=>dateKey(g)===d.value);
    select.innerHTML='<option value="">Select a game ('+games.length+')</option>'+games.map(g=>'<option value="'+esc(g.id)+'">'+esc(g.awayTeam)+' at '+esc(g.homeTeam)+(g.startTimeTbd?' · Time TBD':' · '+new Date(g.startDate).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}))+'</option>').join("");
    $("scheduleStatus").textContent=schedule.length?schedule.length.toLocaleString()+" schedule games saved on this device · "+days.length+" dates available. Choose a matchup to load the teams.":"Import the season schedule once. Choose a date and matchup to fill Team A, Team B and site automatically; enter your own spread and total below.";
  }
+ function setTeam(select,name){
+   if(!select)return;
+   let option=[...select.options].find(o=>o.value===name);
+   if(!option){option=document.createElement("option");option.value=name;option.textContent=name;select.appendChild(option)}
+   select.value=name;
+   select.dispatchEvent(new Event("change",{bubbles:true}));
+ }
  function applyGame(){
-   const g=schedule.find(x=>String(x.id)===$("scheduleGame").value);if(!g)return;
-   const a=$("hmTeamA"),b=$("hmTeamB"),site=$("hmSite");
-   if(a){a.value=g.homeTeam;a.dispatchEvent(new Event("change",{bubbles:true}))}
-   if(b){b.value=g.awayTeam;b.dispatchEvent(new Event("change",{bubbles:true}))}
-   if(site)site.value=g.neutralSite?"neutral":"home";
-   $("scheduleStatus").textContent=g.awayTeam+" at "+g.homeTeam+" loaded. "+(g.neutralSite?"Neutral site":"Home court")+". Enter your spread and total, then generate matchup distributions.";
+   const picker=$("scheduleGame");if(!picker)return;
+   const g=schedule.find(x=>String(x.id)===String(picker.value));if(!g)return;
+   setTeam($("hmTeamA"),g.homeTeam);
+   setTeam($("hmTeamB"),g.awayTeam);
+   const site=$("hmSite");if(site)site.value=g.neutralSite?"neutral":"home";
+   const status=$("scheduleStatus");
+   if(status)status.textContent="Loaded automatically — Team A (home): "+g.homeTeam+" · Team B (away): "+g.awayTeam+" · "+(g.neutralSite?"Neutral site":"Home court")+".";
  }
  $("scheduleDate")?.addEventListener("change",refreshDates);
  $("scheduleGame")?.addEventListener("change",applyGame);
