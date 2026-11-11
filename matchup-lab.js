@@ -109,7 +109,9 @@
      if(h)raw.push({g,orientation:"home",v:h.v});
      if(a)raw.push({g,orientation:"away",v:a.v});
    }
-   const siteMatches=raw.filter(x=>!!x.g.neutralSite===!!neutral);\n   if(siteMatches.length>=5){raw.splice(0,raw.length,...siteMatches)}\n   if(!raw.length)throw Error("No historical games have sufficient prior-game data for this venue. Try the other site setting or import more history.");
+   const siteMatches=raw.filter(x=>!!x.g.neutralSite===!!neutral);
+   if(siteMatches.length>=5){raw.splice(0,raw.length,...siteMatches)}
+   if(!raw.length)throw Error("No historical games have sufficient prior-game data for this venue. Try the other site setting or import more history.");
    const scales=current.v.map((_,i)=>std(raw.map(x=>x.v[i]).filter(Number.isFinite)));
    const unique=new Map();
    for(const x of raw){const scored=distance(current.v,x.v,scales);if(!scored)continue;const old=unique.get(String(x.g.id));if(!old||scored.distance<old.distance)unique.set(String(x.g.id),{...x,...scored})}
@@ -186,7 +188,10 @@
        if(!games.length)throw Error("No games are saved in this browser yet. Open Data Center and check the imported game count.");
        if(!teams.includes(a)||!teams.includes(b))throw Error("The selected teams were not found in the refreshed saved dataset. Choose them again.");
        btn.textContent="Building pregame ratings…";
-       const spread=N($("hmSpread").value),total=N($("hmTotal").value),neutral=$("hmSite").value==="neutral";\n       const rows=candidates(games,a,b,$("hmYears").value,Number($("hmCount").value),lines,neutral);\n       rows.forEach(x=>{x.market={spread,total,providers:0}});\n       render(rows);
+       const spread=N($("hmSpread").value),total=N($("hmTotal").value),neutral=$("hmSite").value==="neutral";
+       const rows=candidates(games,a,b,$("hmYears").value,Number($("hmCount").value),lines,neutral);
+       rows.forEach(x=>{x.market={spread,total,providers:0}});
+       render(rows);
      }catch(e){$("matchupCompsResults").className="results empty";$("matchupCompsResults").textContent=e.message}
      finally{btn.disabled=false;btn.textContent="Generate matchup distributions"}
    });
