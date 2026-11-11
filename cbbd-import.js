@@ -7,7 +7,7 @@
   const FIRST_SEASON = 2023; // CBBD season year: 2023 = 2022-23
   const LAST_SEASON = 2027;  // 2027 = 2026-27 (through today's date)
   const D1 = new Set([
-    "A-10","ACC","America East","American","American Athletic","AAC","ASUN","Atlantic Sun",
+    "A-10","ACC","Am. East","America East","American","American Athletic","AAC","ASUN","Atlantic Sun",
     "Big 12","Big East","Big Sky","Big South","Big Ten","Big West","CAA","CUSA","Conference USA",
     "Horizon","Horizon League","Ivy","MAAC","Metro Atlantic","MAC","Mid-American","MEAC","MVC",
     "Missouri Valley","Mountain West","NEC","Northeast","OVC","Ohio Valley","Pac-12","Patriot",
