@@ -53,9 +53,9 @@
    }
    return {snapshots,seasonFinal};
  }
- function vector(snap,teamA,teamB){
+ function vector(snap,teamA,teamB,minGames=3){
    const a=snap.get(teamA),b=snap.get(teamB);
-   if(!a||!b||a.n<3||b.n<3)return null;
+   if(!a||!b||a.n<minGames||b.n<minGames)return null;
    if(![a.o,a.d,a.p,b.o,b.d,b.p].every(Number.isFinite))return null;
    // A offense vs B defense; B offense vs A defense; both opponent-adjusted tempos.
    return {v:[a.o,b.d,b.o,a.d,a.p,b.p],a,b};
@@ -78,8 +78,8 @@
    const currentGames=games.filter(g=>Number(g.season)===currentSeason&&N(g.homeScore)!==null&&N(g.awayScore)!==null).sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
    if(!currentGames.length)throw Error("No completed games in the current season. Import current-season game data first.");
    const currentSnap=built.seasonFinal.get(String(currentSeason))||new Map();
-   const current=vector(currentSnap,teamA,teamB);
-   if(!current)throw Error("Not enough current-season games (minimum three per team) to build reliable pregame profiles for both selected teams.");
+   const current=vector(currentSnap,teamA,teamB,1);
+   if(!current)throw Error("Not enough current-season games (at least one completed game per team) to build reliable pregame profiles for both selected teams.");
    const targetSeasons=years==="all"?seasons.filter(s=>s<currentSeason):seasons.filter(s=>s<currentSeason&&s>=currentSeason-Number(years));
    const historical=games.filter(g=>targetSeasons.includes(Number(g.season))&&N(g.homeScore)!==null&&N(g.awayScore)!==null).sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
    const raw=[];
@@ -116,7 +116,7 @@
    const rate=(w,l,n)=>n?(100*w/n).toFixed(1)+"% · "+n+" graded":"— · no lines";
    const c=rows[0].current;
    el.className="results";
-   el.innerHTML='<div class="profilegrid"><div><small>Team A adjusted offense</small><b>'+c.a.o.toFixed(1)+'</b><small>Pts / 100 poss</small></div><div><small>Team A adjusted defense</small><b>'+c.a.d.toFixed(1)+'</b><small>Pts allowed / 100 poss</small></div><div><small>Team A adjusted pace</small><b>'+c.a.p.toFixed(1)+'</b><small>Possessions / game</small></div><div><small>Team B adjusted offense</small><b>'+c.b.o.toFixed(1)+'</b><small>Pts / 100 poss</small></div><div><small>Team B adjusted defense</small><b>'+c.b.d.toFixed(1)+'</b><small>Pts allowed / 100 poss</small></div><div><small>Team B adjusted pace</small><b>'+c.b.p.toFixed(1)+'</b><small>Possessions / game</small></div></div><div class="profilegrid"><div><small>Team A win rate</small><b>'+rate(win,loss,win+loss)+'</b><small>Ties '+tie+'</small></div><div><small>Team A ATS hit rate</small><b>'+rate(atsW,atsL,atsW+atsL)+'</b><small>Pushes '+atsP+' · no-line '+(rows.length-atsN)+'</small></div><div><small>Over hit rate</small><b>'+rate(ouW,ouL,ouW+ouL)+'</b><small>Pushes '+ouP+' · no-line '+(rows.length-ouN)+'</small></div><div><small>Historical comps</small><b>'+rows.length+'</b><small>Top closest matches</small></div></div><p class="muted small">Similarity is a statistical distance, not a win probability. Pregame ratings use only completed games before each matchup, with iterative opponent adjustments and regression toward league average. Adjusted pace is an estimate derived from observed game pace and opponents prior pace. Hit rates use only available lines; provider snapshots are averaged where multiple providers exist and may not be official closing lines.</p>'+cards;
+   el.innerHTML='<div class="profilegrid"><div><small>Team A adjusted offense</small><b>'+c.a.o.toFixed(1)+'</b><small>Pts / 100 poss · '+c.a.n+' GP</small></div><div><small>Team A adjusted defense</small><b>'+c.a.d.toFixed(1)+'</b><small>Pts allowed / 100 poss · '+c.a.n+' GP</small></div><div><small>Team A adjusted pace</small><b>'+c.a.p.toFixed(1)+'</b><small>Possessions / game</small></div><div><small>Team B adjusted offense</small><b>'+c.b.o.toFixed(1)+'</b><small>Pts / 100 poss · '+c.b.n+' GP</small></div><div><small>Team B adjusted defense</small><b>'+c.b.d.toFixed(1)+'</b><small>Pts allowed / 100 poss · '+c.b.n+' GP</small></div><div><small>Team B adjusted pace</small><b>'+c.b.p.toFixed(1)+'</b><small>Possessions / game</small></div></div><div class="profilegrid"><div><small>Team A win rate</small><b>'+rate(win,loss,win+loss)+'</b><small>Ties '+tie+'</small></div><div><small>Team A ATS hit rate</small><b>'+rate(atsW,atsL,atsW+atsL)+'</b><small>Pushes '+atsP+' · no-line '+(rows.length-atsN)+'</small></div><div><small>Over hit rate</small><b>'+rate(ouW,ouL,ouW+ouL)+'</b><small>Pushes '+ouP+' · no-line '+(rows.length-ouN)+'</small></div><div><small>Historical comps</small><b>'+rows.length+'</b><small>Top closest matches</small></div></div><p class="muted small">Similarity is a statistical distance, not a win probability. Pregame ratings use only completed games before each matchup, with iterative opponent adjustments and regression toward league average. Adjusted pace is an estimate derived from observed game pace and opponents prior pace. Hit rates use only available lines; provider snapshots are averaged where multiple providers exist and may not be official closing lines.</p>'+cards;
  }
  async function init(){
    const [games,lines]=await Promise.all([read("games"),read("lines")]);
