@@ -1,4 +1,4 @@
-const CACHE_NAME="cbb-lab-shell-v3";
+const CACHE_NAME="cbb-lab-shell-v4";
 const APP_SHELL=[
   "/",
   "/index.html",
@@ -11,10 +11,10 @@ const APP_SHELL=[
   "/app.js",
   "/cbbd-import.js",
   "/ratings-import.js",
-  "/matchup-lab.js?v=20261111-pregame-integrity3",
+  "/matchup-lab.js?v=20261111-pregame-integrity4",
   "/schedule.js",
   "/slate-scanner.js?v=20261111-pregame-integrity2",
-  "/similarity-backtest.js?v=20261111-pregame-integrity3",
+  "/similarity-backtest.js?v=20261111-pregame-integrity4",
   "/backtest.js"
 ];
 self.addEventListener("install",event=>{
