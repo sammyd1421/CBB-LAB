@@ -21,7 +21,7 @@ The basic Game Model is a descriptive baseline only. It is not the core value pr
 - Require at least 24 of 30 features overall and at least 12 for each team. Missing values remain missing; never fill them with zero.
 - Require each team's rolling pace to be within 2.0 possessions of its corresponding target team's pace.
 - Prefer same-venue historical games when at least five are available; otherwise include both venue types.
-- Use a 60% fingerprint-similarity floor. 80%+ is strong, 90%+ elite, and 100% means identical under the defined distance.
+- Use an 80% fingerprint-similarity floor for core matchup and slate results. 90%+ is elite, and 100% means identical under the defined distance.
 - Spreads, totals, projected scores, and historical betting lines never influence which analogs qualify or how they are ranked. User-entered lines can be used after selection to grade outcomes only.
 
 The live Matchup Lab, Daily Slate Scanner, and walk-forward backtest should share these rules. See [DATA_MODEL.md](DATA_MODEL.md) for the complete model contract.
