@@ -72,7 +72,7 @@
    const below=v.filter(x=>higher?x<value:x>value).length,equal=v.filter(x=>x===value).length;
    return 100*(below+.5*equal)/v.length;
  }
- function matchupRadar(a,b,snap,title,metrics){
+ function matchupRadar(a,b,snap,title,metrics,teamA,teamB){
    const cx=180,cy=126,r=78,step=Math.PI*2/metrics.length;
    const series=[{p:a,key:"a",cls:"fp-target"},{p:b,key:"b",cls:"fp-historical"}];
    const vals=metrics.map(m=>{const pool=[...snap.values()].map(x=>x[m.key]).filter(Number.isFinite);return { ...m, pool,
@@ -82,7 +82,7 @@
    const rings=[20,40,60,80,100].map(n=>'<circle cx="'+cx+'" cy="'+cy+'" r="'+(r*n/100)+'" class="fp-ring"/>').join("");
    const axes=metrics.map((m,i)=>{const ang=-Math.PI/2+i*step,x=cx+Math.cos(ang)*r,y=cy+Math.sin(ang)*r,lx=cx+Math.cos(ang)*(r+15),ly=cy+Math.sin(ang)*(r+15),anchor=Math.cos(ang)>.25?"start":Math.cos(ang)<-.25?"end":"middle";return '<line x1="'+cx+'" y1="'+cy+'" x2="'+x.toFixed(1)+'" y2="'+y.toFixed(1)+'" class="fp-axis"/><text x="'+lx.toFixed(1)+'" y="'+ly.toFixed(1)+'" text-anchor="'+anchor+'" class="fp-label">'+m.label+'</text>'}).join("");
    const legend=vals.map(m=>'<span>'+m.label+' <b>'+ (Number.isFinite(m.av)?m.av.toFixed(0)+'p':'—')+' / '+(Number.isFinite(m.bv)?m.bv.toFixed(0)+'p':'—')+'</b><small>'+ (Number.isFinite(a[m.key])?a[m.key].toFixed(1):'—')+' / '+(Number.isFinite(b[m.key])?b[m.key].toFixed(1):'—')+'</small></span>').join("");
-   return '<div class="fingerprint-radar matchup-team-radar"><h5>'+title+'</h5><svg viewBox="0 0 360 260" role="img" aria-label="'+title+' percentile radar comparing Team A and Team B">'+rings+axes+'<polygon points="'+poly("av")+'" class="fp-target"/><polygon points="'+poly("bv")+'" class="fp-historical"/><circle cx="'+cx+'" cy="'+cy+'" r="2" class="fp-center"/></svg><div class="fp-legend"><span><i class="fp-target-key"></i>Team A</span><span><i class="fp-historical-key"></i>Team B</span></div><div class="matchup-radar-values">'+legend+'</div></div>';
+   return '<div class="fingerprint-radar matchup-team-radar"><h5>'+title+'</h5><svg viewBox="0 0 360 260" role="img" aria-label="'+title+' percentile radar comparing Team A and Team B">'+rings+axes+'<polygon points="'+poly("av")+'" class="fp-target"/><polygon points="'+poly("bv")+'" class="fp-historical"/><circle cx="'+cx+'" cy="'+cy+'" r="2" class="fp-center"/></svg><div class="fp-legend"><span><i class="fp-target-key"></i>'+teamA+'</span><span><i class="fp-historical-key"></i>'+teamB+'</span></div><div class="matchup-radar-values">'+legend+'</div></div>';
  }
  function matchupProfilePanel(profile,teamA,teamB){
    const snap=profile.snap;
@@ -95,8 +95,8 @@
    const paceGap=profile.a.p-profile.b.p;
    const pace='<div class="matchup-pace-strip"><div><small>TEAM A · '+teamA+'</small><b>'+show(profile.a.p)+'</b><small>Opponent-adjusted possessions / game</small></div><div class="pace-delta"><small>PACE GAP</small><b>'+Math.abs(paceGap).toFixed(1)+'</b><small>'+(Math.abs(paceGap)<1?"Very similar tempo":paceGap>0?"Team A faster":"Team B faster")+'</small></div><div><small>TEAM B · '+teamB+'</small><b>'+show(profile.b.p)+'</b><small>Opponent-adjusted possessions / game</small></div></div>';
    const strengths='<div class="profilegrid matchup-strength-grid"><div><small>'+teamA+' · adjusted offense</small><b>'+show(profile.a.o)+'</b><small>Points / 100 possessions</small></div><div><small>'+teamA+' · adjusted defense</small><b>'+show(profile.a.d)+'</b><small>Points allowed / 100 possessions · lower is better</small></div><div><small>'+teamB+' · adjusted offense</small><b>'+show(profile.b.o)+'</b><small>Points / 100 possessions</small></div><div><small>'+teamB+' · adjusted defense</small><b>'+show(profile.b.d)+'</b><small>Points allowed / 100 possessions · lower is better</small></div></div>';
-   const radars=groups.map(g=>matchupRadar(profile.a,profile.b,snap,g.title,g.metrics.map(([label,key,higher])=>({label,key,higher})))).join("");
-   return '<section class="matchup-team-profiles"><h4>Team profiles · adjusted pace and strengths / weaknesses</h4><p class="muted small">The same pregame opponent-adjusted team snapshot used for the matchup fingerprint. Radar axes show within-snapshot percentiles (higher is better); pace is displayed separately because faster is a style, not automatically a strength. Each radar legend shows Team A / Team B percentile followed by the underlying metric values.</p>'+pace+strengths+'<div class="matchup-profile-radars">'+radars+'</div></section>';
+   const radars=groups.map(g=>matchupRadar(profile.a,profile.b,snap,g.title,g.metrics.map(([label,key,higher])=>({label,key,higher})),teamA,teamB)).join("");
+   return '<section class="matchup-team-profiles"><h4>Team profiles · adjusted pace and strengths / weaknesses</h4><p class="muted small">The same pregame opponent-adjusted team snapshot used for the matchup fingerprint. Radar axes show within-snapshot percentiles (higher is better); pace is displayed separately because faster is a style, not automatically a strength. Each radar legend shows the two teams’ percentile followed by the underlying metric values.</p>'+pace+strengths+'<div class="matchup-profile-radars">'+radars+'</div></section>';
  }
  function buildSnapshots(games){
    // One chronological history across seasons: early-season teams retain their
