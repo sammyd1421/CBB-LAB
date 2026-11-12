@@ -125,7 +125,7 @@
      for(let i=0;i<slate.length;i++){
        const g=slate[i];status.textContent="Scanning "+(i+1)+" of "+slate.length+": "+g.awayTeam+" at "+g.homeTeam;
        try{
-         const candidates=window.CBBLabScanner.compare(games,g.homeTeam,g.awayTeam,!!g.neutralSite,years);
+         const candidates=window.CBBLabScanner.compare(games,g.homeTeam,g.awayTeam,!!g.neutralSite,years,dayKey(g));
          const qualifying=candidates.filter(x=>Number.isFinite(x.similarity)&&x.similarity>=60);
          if(qualifying.length<5){results.push({g,insufficient:true,n:qualifying.length});continue}
          results.push({g,s:summary(qualifying)});
