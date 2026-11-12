@@ -267,7 +267,8 @@
        if(!teams.includes(a)||!teams.includes(b))throw Error("The selected teams were not found in the saved dataset. Choose them again.");
        btn.textContent="Building pregame ratings…";
        const spread=N($("hmSpread").value),total=N($("hmTotal").value),neutral=$("hmSite").value==="neutral";
-       const targetDate=$("scheduleDate")?.value||new Date().toISOString().slice(0,10);\n      const rows=candidates(games,a,b,$("hmYears").value,$("hmCount").value==="all"?Infinity:Number($("hmCount").value),spread,total,neutral,targetDate);
+       const now=new Date(),localDate=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0"),targetDate=$("scheduleDate")?.value||localDate;
+      const rows=candidates(games,a,b,$("hmYears").value,$("hmCount").value==="all"?Infinity:Number($("hmCount").value),spread,total,neutral,targetDate);
        rows.forEach(x=>{x.market={spread,total,providers:0}});
        render(rows);
      }catch(e){
