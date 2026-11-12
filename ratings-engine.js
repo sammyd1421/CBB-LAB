@@ -11,7 +11,7 @@
   if(!g.homeTeam||!g.awayTeam||hs===null||as===null||!(hp>0)||!(ap>0))return[];
   const make=(side,team,opp,score,against,pace)=>{
    const other=side==="home"?"away":"home",v=k=>pct(N(g[side+"_"+k])),ov=k=>pct(N(g[other+"_"+k]));
-   return{team,opp,gameId:String(g.id??g.sourceGameId??g.gameDate??""),gameDate:g.gameDate||"",home:side==="home",neutral:!!g.neutralSite,off:score/pace*100,def:against/pace*100,pace,
+   return{team,opp,gameId:String(g.id??g.sourceGameId??g.gameDate??""),gameDate:g.gameDate||g.startDate||g.date||"",home:side==="home",neutral:!!g.neutralSite,off:score/pace*100,def:against/pace*100,pace,
     efg:v("efg"),tov:v("tov"),orb:v("orb"),ftr:v("ftr"),threeRate:v("threeRate"),threePct:v("threePct"),twoPct:v("twoPct"),
     oppEfg:ov("efg"),oppTov:ov("tov"),oppThreeRate:ov("threeRate"),oppThreePct:ov("threePct"),oppTwoPct:ov("twoPct")};
   };
