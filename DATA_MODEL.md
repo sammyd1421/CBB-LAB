@@ -25,7 +25,7 @@ The API caps game and team-box-score responses at 3,000 rows per request. A full
 ## Pregame similarity and validation protocol
 - Build each target team fingerprint from its ten most recent completed team games available before the target date; carry prior-season games forward during early-season windows.
 - Exclude every game on the target date from both teams’ pregame snapshots.
-- Compare full 30-feature matchup fingerprints (15 metrics per team), requiring at least 24 valid features overall and at least 12 from each team.
+- Compare full 30-feature matchup fingerprints (15 metrics per team), requiring at least 24 valid features overall and at least 12 from each team. Similarity is calibrated as `100 × exp(−1.5 × distance²)`; identical profiles score 100, while the 60% floor requires a materially tighter feature match than the previous scale.
 - Apply the same-site preference only when at least five same-site historical candidates are available; otherwise retain both venue types.
 - Require expected pace within five possessions and projected combined scoring within 12 points before accepting a historical analog; then apply the 60% absolute similarity floor.
 - The similarity predictability backtest must mirror the live ten-game window, venue preference, scoring-environment filters, and similarity floor. Report errors and empirical frequencies as historical diagnostics, never as guaranteed betting probabilities.
