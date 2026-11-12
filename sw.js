@@ -1,4 +1,4 @@
-const CACHE_NAME="cbb-lab-shell-v16";
+const CACHE_NAME="cbb-lab-shell-v17";
 const APP_SHELL=[
   "/",
   "/index.html",
@@ -13,7 +13,7 @@ const APP_SHELL=[
   "/ratings-import.js",
   "/matchup-lab.js?v=20261111-fingerprint-core1",
   "/schedule.js",
-  "/slate-scanner.js?v=20261111-pregame-integrity2",
+  "/slate-scanner.js?v=20261111-fingerprint-core2",
   "/similarity-backtest.js?v=20261111-fingerprint-core1",
   "/backtest.js"
 ];
