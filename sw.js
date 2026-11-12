@@ -1,4 +1,4 @@
-const CACHE_NAME="cbb-lab-shell-v33";
+const CACHE_NAME="cbb-lab-shell-v34";
 const APP_SHELL=[
   "/",
   "/index.html",
@@ -6,8 +6,8 @@ const APP_SHELL=[
   "/manifest.webmanifest",
   "/icons/cbb-lab.svg",
   "/similarity.js",
-  "/ratings-engine.js?v=20261112-opponent-adjusted2",
-  "/team-profiles.js?v=20261112-opponent-adjusted2",
+  "/ratings-engine.js?v=20261112-defense-style-adjustment1",
+  "/team-profiles.js?v=20261112-defense-style-adjustment1",
   "/projections.js",
   "/app.js",
   "/cbbd-import.js",
