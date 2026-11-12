@@ -5,8 +5,8 @@ Use CollegeBasketballData (CBBD) as the first provider. Its API uses the same be
 
 | CBB LAB season | CBBD season parameter |
 |---|---:|
-| 2021-22 | 2022 |
-| 2021-22 | 2022 |\n| 2022-23 | 2023 |
+| 2021–22 | 2022 |
+| 2022–23 | 2023 |
 | 2023-24 | 2024 |
 | 2024-25 | 2025 |
 | 2025-26 | 2026 |
@@ -21,6 +21,14 @@ Use CollegeBasketballData (CBBD) as the first provider. Its API uses the same be
 
 ## Backfill approach
 The API caps game and team-box-score responses at 3,000 rows per request. A full season can exceed that, so split requests into date windows or conference/team batches. Persist each batch before requesting the next one; use source IDs and unique constraints so retries do not duplicate games. Start with games and team-game box scores, then season aggregates and odds. Keep requests comfortably below the free shared monthly quota, especially while the existing CFBD football work may also consume it.
+
+## Pregame similarity and validation protocol
+- Build each target team fingerprint from its ten most recent completed team games available before the target date; carry prior-season games forward during early-season windows.
+- Exclude every game on the target date from both teams’ pregame snapshots.
+- Compare full 30-feature matchup fingerprints (15 metrics per team), requiring at least 24 valid features overall and at least 12 from each team.
+- Apply the same-site preference only when at least five same-site historical candidates are available; otherwise retain both venue types.
+- Require expected pace within five possessions and projected combined scoring within 12 points before accepting a historical analog; then apply the 60% absolute similarity floor.
+- The similarity predictability backtest must mirror the live ten-game window, venue preference, scoring-environment filters, and similarity floor. Report errors and empirical frequencies as historical diagnostics, never as guaranteed betting probabilities.
 
 ## Validation before enabling analytics
 - Compare game counts with source season schedules and record unexplained gaps.
