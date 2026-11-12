@@ -126,7 +126,7 @@
        const g=slate[i];status.textContent="Scanning "+(i+1)+" of "+slate.length+": "+g.awayTeam+" at "+g.homeTeam;
        try{
          const candidates=window.CBBLabScanner.compare(games,g.homeTeam,g.awayTeam,!!g.neutralSite,years,dayKey(g));
-         const qualifying=candidates.filter(x=>Number.isFinite(x.similarity)&&x.similarity>=60);
+         const qualifying=candidates.filter(x=>Number.isFinite(x.similarity)&&x.similarity>=80).slice(0,25);
          if(qualifying.length<5){results.push({g,insufficient:true,n:qualifying.length});continue}
          results.push({g,s:summary(qualifying)});
        }catch(e){results.push({g,error:e.message})}
