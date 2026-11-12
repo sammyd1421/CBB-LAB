@@ -1,8 +1,8 @@
-const CACHE_NAME="cbb-lab-shell-v32";
+const CACHE_NAME="cbb-lab-shell-v33";
 const APP_SHELL=[
   "/",
   "/index.html",
-  "/style.css?v=20261112-five-point-distributions1",
+  "/style.css?v=20261112-named-team-margin1",
   "/manifest.webmanifest",
   "/icons/cbb-lab.svg",
   "/similarity.js",
@@ -12,7 +12,7 @@ const APP_SHELL=[
   "/app.js",
   "/cbbd-import.js",
   "/ratings-import.js",
-  "/matchup-lab.js?v=20261112-five-point-distributions1",
+  "/matchup-lab.js?v=20261112-named-team-margin1",
   "/schedule.js",
   "/slate-scanner.js?v=20261112-shared-pace-engine1",
   "/similarity-backtest.js?v=20261112-adjusted-validation1",
