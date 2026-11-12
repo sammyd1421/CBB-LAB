@@ -111,14 +111,14 @@
    if(!current)throw Error("A reliable pregame profile needs at least five completed games with pace data for each team before "+cutoffDate+". The model can carry forward prior-season history for the other fingerprint features.");
    const environment=p=>({pace:(p.a.p+p.b.p)/2,paceA:p.a.p,paceB:p.b.p});
    const currentEnvironment=environment(current);
-   const expectedScores=(profile,pace,teamAHome)=>{
+   const expectedScores=(profile,pace,teamAHome,isNeutral)=>{
      const baseline=profile.leagueOff;
      if(!Number.isFinite(baseline)||!Number.isFinite(pace))return {a:null,b:null};
      const effA=profile.a.o+profile.b.d-baseline,effB=profile.b.o+profile.a.d-baseline;
      const hca=profile.hca||0,site=teamAHome?1:-1;
-     return {a:pace*effA/100+(neutral?0:site*hca*pace/200),b:pace*effB/100-(neutral?0:site*hca*pace/200)};
+     return {a:pace*effA/100+(isNeutral?0:site*hca*pace/200),b:pace*effB/100-(isNeutral?0:site*hca*pace/200)};
    };
-   current.expectedScores=expectedScores(current,currentEnvironment.pace,true);
+   current.expectedScores=expectedScores(current,currentEnvironment.pace,true,neutral);
    const historical=relevantGames.filter(g=>targetSeasons.includes(Number(g.season))&&N(g.homeScore)!==null&&N(g.awayScore)!==null).sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
    const raw=[];
    // Rebuild a strictly pregame snapshot for each historical matchup.
@@ -133,7 +133,7 @@
    if(siteMatches.length>=5){raw.splice(0,raw.length,...siteMatches)}
    if(!raw.length)throw Error("No historical games have sufficient prior-game data for this venue. Try the other site setting or import more history.");
    const unique=new Map();
-   for(const x of raw){const scored=distance(current.v,x.v);if(!scored)continue;const env=environment(x.profile),actualA=x.orientation==="home"?N(x.g.homeScore):N(x.g.awayScore),actualB=x.orientation==="home"?N(x.g.awayScore):N(x.g.homeScore),expected=expectedScores(x.profile,env.pace,x.orientation==="home");const old=unique.get(String(x.g.id));if(!old||scored.distance<old.distance)unique.set(String(x.g.id),{...x,...scored,expectedPace:env.pace,expectedPaceA:env.paceA,expectedPaceB:env.paceB,paceGapA:Math.abs(env.paceA-currentEnvironment.paceA),paceGapB:Math.abs(env.paceB-currentEnvironment.paceB),paceGap:Math.abs(env.pace-currentEnvironment.pace),expectedA:expected.a,expectedB:expected.b,actualA,actualB})}
+   for(const x of raw){const scored=distance(current.v,x.v);if(!scored)continue;const env=environment(x.profile),actualA=x.orientation==="home"?N(x.g.homeScore):N(x.g.awayScore),actualB=x.orientation==="home"?N(x.g.awayScore):N(x.g.homeScore),expected=expectedScores(x.profile,env.pace,x.orientation==="home",!!x.g.neutralSite);const old=unique.get(String(x.g.id));if(!old||scored.distance<old.distance)unique.set(String(x.g.id),{...x,...scored,expectedPace:env.pace,expectedPaceA:env.paceA,expectedPaceB:env.paceB,paceGapA:Math.abs(env.paceA-currentEnvironment.paceA),paceGapB:Math.abs(env.paceB-currentEnvironment.paceB),paceGap:Math.abs(env.pace-currentEnvironment.pace),expectedA:expected.a,expectedB:expected.b,actualA,actualB})}
    const allRanked=[...unique.values()].sort((a,b)=>a.distance-b.distance).map(x=>({...x,market:{spread,total,providers:0},similarity:(window.CBBLabSimilarityScale?.score||((d)=>d===0?100:Math.min(99.9,100*Math.exp(-1.5*d*d))))(x.distance),translatedA:Number.isFinite(current.expectedScores.a)&&Number.isFinite(x.expectedA)&&x.expectedPace>0?current.expectedScores.a+(x.actualA-x.expectedA)*currentEnvironment.pace/x.expectedPace:null,translatedB:Number.isFinite(current.expectedScores.b)&&Number.isFinite(x.expectedB)&&x.expectedPace>0?current.expectedScores.b+(x.actualB-x.expectedB)*currentEnvironment.pace/x.expectedPace:null,current}));
    const compatible=allRanked.filter(x=>Number.isFinite(x.paceGapA)&&Number.isFinite(x.paceGapB)&&x.paceGapA<=1.000000001&&x.paceGapB<=1.000000001);
    const tier=(lo,hi)=>compatible.filter(x=>x.similarity>=lo&&x.similarity<hi).length;
