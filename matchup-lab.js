@@ -10,7 +10,7 @@
  // so candidates() is available here without waiting for UI setup/render code.
  window.CBBLabScanner={
    loadGames:()=>read("games"),
-   compare:(games,home,away,neutral,years)=>candidates(games,home,away,years,50000,null,null,neutral)
+   compare:(games,home,away,neutral,years,targetDate)=>candidates(games,home,away,years,50000,null,null,neutral,targetDate)
  };
  const FEATURE_KEYS=["o","d","p","efg","tov","orb","ftr","threeRate","threePct","twoPct","oppEfg","oppTov","oppThreeRate","oppThreePct","oppTwoPct"];
  const FEATURE_LABELS=["Adj offense","Adj defense","Pace","eFG%","Turnover rate","Off. rebound rate","Free-throw rate","3PA rate","3P%","2P%","Opp. eFG%","Opp. turnover rate","Opp. 3PA rate","Opp. 3P%","Opp. 2P%"];
@@ -76,20 +76,19 @@
    return {distance:Math.sqrt(sum/weight),details,coverage:used/v1.length,used};
  }
  function buildSnapshots(games){
-   const bySeason=new Map();
-   games.filter(g=>N(g.homeScore)!==null&&N(g.awayScore)!==null&&g.gameDate).forEach(g=>{const s=String(g.season);if(!bySeason.has(s))bySeason.set(s,[]);bySeason.get(s).push(g)});
-   const snapshots=new Map(),seasonFinal=new Map();
-   for(const [season,list] of bySeason){
-     list.sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
-     let prior=[];
-     for(let i=0;i<list.length;){
-       const date=String(list[i].gameDate),key=season+"|"+date;
-       const snap=adjustedSnapshot(prior);
-       snapshots.set(key,snap);
-       let j=i;while(j<list.length&&String(list[j].gameDate)===date){prior.push(list[j]);j++}
-       i=j;
-     }
-     seasonFinal.set(season,adjustedSnapshot(prior));
+   // One chronological history across seasons: early-season teams retain their
+   // most recent prior-season form, while every snapshot remains strictly pregame.
+   const ordered=games.filter(g=>N(g.homeScore)!==null&&N(g.awayScore)!==null&&g.gameDate)
+     .slice().sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
+   const snapshots=new Map(),seasonFinal=new Map();let prior=[];
+   for(let i=0;i<ordered.length;){
+     const date=String(ordered[i].gameDate).slice(0,10),day=[];
+     let j=i;while(j<ordered.length&&String(ordered[j].gameDate).slice(0,10)===date){day.push(ordered[j]);j++}
+     const seasons=[...new Set(day.map(g=>String(g.season)))];
+     seasons.forEach(season=>snapshots.set(season+"|"+date,adjustedSnapshot(prior,10)));
+     prior.push(...day);
+     seasons.forEach(season=>seasonFinal.set(season,adjustedSnapshot(prior,10)));
+     i=j;
    }
    return {snapshots,seasonFinal};
  }
@@ -99,7 +98,7 @@
    return {spread:entries.length?mean(entries.map(x=>N(x.spread)).filter(Number.isFinite)):null,total:entries.length?mean(entries.map(x=>N(x.overUnder)).filter(Number.isFinite)):null,providers:entries.length};
  }
  let snapshotCacheGames=null,snapshotCache=new Map();
- function candidates(games,teamA,teamB,years,count,spread,total,neutral){
+ function candidates(games,teamA,teamB,years,count,spread,total,neutral,targetDate){
    const seasons=[...new Set(games.map(g=>Number(g.season)).filter(Number.isFinite))].sort((a,b)=>a-b);
    const currentSeason=seasons[seasons.length-1];if(!currentSeason)throw Error("No imported season data found.");
    const targetSeasons=years==="all"?seasons.filter(s=>s<currentSeason):seasons.filter(s=>s<currentSeason&&s>=currentSeason-Number(years));
@@ -108,12 +107,16 @@
    const cacheKey=years;
    if(!snapshotCache.has(cacheKey))snapshotCache.set(cacheKey,buildSnapshots(relevantGames));
    const built=snapshotCache.get(cacheKey);
-   const currentGames=relevantGames.filter(g=>Number(g.season)===currentSeason&&N(g.homeScore)!==null&&N(g.awayScore)!==null).sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
-   if(!currentGames.length)throw Error("No completed games in the current season. Import current-season game data first.");
-   const currentHistory=relevantGames.filter(g=>N(g.homeScore)!==null&&N(g.awayScore)!==null).sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
+   const localNow=new Date(),today=localNow.getFullYear()+"-"+String(localNow.getMonth()+1).padStart(2,"0")+"-"+String(localNow.getDate()).padStart(2,"0");
+   const cutoffDate=String(targetDate||today).slice(0,10);
+   // Never let results from the target date or a future date influence the
+   // live profile. Carry forward up to ten most recent prior games per team.
+   const currentHistory=relevantGames.filter(g=>N(g.homeScore)!==null&&N(g.awayScore)!==null&&String(g.gameDate||"").slice(0,10)<cutoffDate)
+     .sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
+   if(!currentHistory.length)throw Error("No completed games exist before "+cutoffDate+". Import earlier game results first.");
    const currentSnap=adjustedSnapshot(currentHistory,10);
    const current=vector(currentSnap,teamA,teamB,5);
-   if(!current)throw Error("A reliable current profile needs five recent completed games with pace data for each team. Early-season profiles carry over up to ten recent games from the prior season until enough new results are available.");
+   if(!current)throw Error("A reliable pregame profile needs at least five completed games with pace data for each team before "+cutoffDate+". The model can carry forward up to ten recent games from prior seasons.");
    const environment=p=>{const pace=(p.a.p+p.b.p)/2;const aEff=(p.a.o+p.b.d)/2,bEff=(p.b.o+p.a.d)/2;return {pace,total:pace*(aEff+bEff)/100};};
    const currentEnvironment=environment(current);
    const historical=relevantGames.filter(g=>targetSeasons.includes(Number(g.season))&&N(g.homeScore)!==null&&N(g.awayScore)!==null).sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
@@ -264,7 +267,7 @@
        if(!teams.includes(a)||!teams.includes(b))throw Error("The selected teams were not found in the saved dataset. Choose them again.");
        btn.textContent="Building pregame ratings…";
        const spread=N($("hmSpread").value),total=N($("hmTotal").value),neutral=$("hmSite").value==="neutral";
-       const rows=candidates(games,a,b,$("hmYears").value,$("hmCount").value==="all"?Infinity:Number($("hmCount").value),spread,total,neutral);
+       const targetDate=$("scheduleDate")?.value||new Date().toISOString().slice(0,10);\n      const rows=candidates(games,a,b,$("hmYears").value,$("hmCount").value==="all"?Infinity:Number($("hmCount").value),spread,total,neutral,targetDate);
        rows.forEach(x=>{x.market={spread,total,providers:0}});
        render(rows);
      }catch(e){
