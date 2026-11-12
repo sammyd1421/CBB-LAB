@@ -36,7 +36,7 @@ Missing values remain missing; they are never replaced with zero. A comparison r
 - Compare Team A with historical Team A and Team B with historical Team B. Consider the reversed historical orientation only when it produces the closer full fingerprint.
 - Require each team's historical average pace to be within **2.0 possessions** of its corresponding target team's pace. Do not use spreads, totals, projected scoring, or historical betting lines to select, filter, rank, or score analogs.
 - Prefer the same venue type when at least five same-venue candidates are available; otherwise include both venue types.
-- Apply the 60% absolute fingerprint-similarity floor after calculating the full fingerprint distance. 80%+ is a strong resemblance; 90%+ is elite; 100% means identical under the defined feature distance.
+- Apply the 80% absolute fingerprint-similarity floor after calculating the full fingerprint distance. 80%+ is the minimum strong resemblance; 90%+ is elite; 100% means identical under the defined feature distance.
 - Rank qualifying games by fingerprint similarity. Report each team's pace and pace difference alongside the similarity so the user can audit the match.
 - User-entered spread/total, when supplied, are applied only after analog selection to describe how historical outcomes would have graded against those lines. They never influence analog selection.
 
@@ -49,7 +49,7 @@ Missing values remain missing; they are never replaced with zero. A comparison r
 - Label small samples and limited feature coverage clearly. Historical frequencies are descriptive evidence, not guaranteed outcomes or calibrated forward probabilities.
 
 ## Validation
-- Live Matchup Lab, Daily Slate Scanner, and walk-forward backtest must use the same 10-game pregame window, fingerprint features, feature scales/weights, 2-possession per-team pace gate, 60% similarity floor, and same-venue preference rule.
+- Live Matchup Lab, Daily Slate Scanner, and walk-forward backtest must use the same 10-game pregame window, fingerprint features, feature scales/weights, 2-possession per-team pace gate, 80% similarity floor, and same-venue preference rule.
 - Backtest targets must be evaluated chronologically using only earlier completed games. Do not let same-day or future games leak into the target profile or its analog pool.
 - Compare results by similarity tier and report sample sizes and prediction errors. Do not describe a high historical hit rate as a lock without robust, out-of-sample evidence.
 - Validate source game IDs, duplicates, score/pace ranges, feature units, and per-season import coverage. Keep missingness visible.
