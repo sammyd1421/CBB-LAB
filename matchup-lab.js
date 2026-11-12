@@ -15,7 +15,7 @@
  const FEATURE_KEYS=["o","d","p","efg","tov","orb","ftr","threeRate","threePct","twoPct","oppEfg","oppTov","oppThreeRate","oppThreePct","oppTwoPct"];
  const FEATURE_LABELS=["Adj offense","Adj defense","Pace","eFG%","Turnover rate","Off. rebound rate","Free-throw rate","3PA rate","3P%","2P%","Opp. eFG%","Opp. turnover rate","Opp. 3PA rate","Opp. 3P%","Opp. 2P%"];
  const FEATURE_GROUPS=["efficiency","efficiency","pace","shooting","ball security","rebounding","shot profile","shot profile","shooting","shooting","defense","defense","defense","defense","defense"];
- const FEATURE_WEIGHTS=[1.5,1.5,.9,1.15,.9,.85,.65,.8,1.0,.9,1.15,.75,.75,.9,.8];
+ const FEATURE_WEIGHTS=[1.5,1.5,2.0,1.15,.9,.85,.65,.8,1.0,.9,1.15,.75,.75,.9,.8];
  function gameRows(g){
    const hs=N(g.homeScore),as=N(g.awayScore),hp=N(g.home_pace),ap=N(g.away_pace);
    const pace=mean([hp,ap].filter(Number.isFinite));
@@ -23,7 +23,7 @@
    const row=(side,team,opp,score,oppScore,ownP,oppP)=>{
      const other=side==="home"?"away":"home",v=k=>pct(N(g[side+"_"+k])),ov=k=>pct(N(g[other+"_"+k]));
      return {team,opp,season:String(g.season),date:String(g.gameDate||""),game:g,side,
-       off:score/(ownP||pace)*100,def:oppScore/(ownP||pace)*100,pace:ownP||pace,
+       off:score/ownP*100,def:oppScore/ownP*100,pace:ownP,
        efg:v("efg"),tov:v("tov"),orb:v("orb"),ftr:v("ftr"),threeRate:v("threeRate"),threePct:v("threePct"),twoPct:v("twoPct"),
        oppEfg:ov("efg"),oppTov:ov("tov"),oppThreeRate:ov("threeRate"),oppThreePct:ov("threePct"),oppTwoPct:ov("twoPct")};
    };
@@ -60,7 +60,7 @@
    const v=[...FEATURE_KEYS.map(k=>a[k]),...FEATURE_KEYS.map(k=>b[k])];
    return {v,a,b,coverage:v.filter(Number.isFinite).length/v.length};
  }
- const FEATURE_SCALES=[6,6,4,5,4,6,8,8,5,5,5,4,8,5,5];
+ const FEATURE_SCALES=[6,6,3,5,4,6,8,8,5,5,5,4,8,5,5];
  function distance(v1,v2){
    let sum=0,weight=0,used=0;
    const details={efficiency:{sum:0,w:0},pace:{sum:0,w:0},shooting:{sum:0,w:0},rebounding:{sum:0,w:0},ballSecurity:{sum:0,w:0},defense:{sum:0,w:0},shotProfile:{sum:0,w:0}};
@@ -118,7 +118,7 @@
    const currentSnap=adjustedSnapshot(currentHistory,10);
    const current=vector(currentSnap,teamA,teamB,5);
    if(!current)throw Error("A reliable pregame profile needs at least five completed games with pace data for each team before "+cutoffDate+". The model can carry forward up to ten recent games from prior seasons.");
-   const environment=p=>{const pace=(p.a.p+p.b.p)/2;const aEff=(p.a.o+p.b.d)/2,bEff=(p.b.o+p.a.d)/2;return {pace,total:pace*(aEff+bEff)/100};};
+   const environment=p=>{const pace=(p.a.p+p.b.p)/2;const aEff=(p.a.o+p.b.d)/2,bEff=(p.b.o+p.a.d)/2;return {pace,total:pace*(aEff+bEff)/100,paceA:p.a.p,paceB:p.b.p};};
    const currentEnvironment=environment(current);
    const historical=relevantGames.filter(g=>targetSeasons.includes(Number(g.season))&&N(g.homeScore)!==null&&N(g.awayScore)!==null).sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
    const raw=[];
@@ -134,9 +134,9 @@
    if(siteMatches.length>=5){raw.splice(0,raw.length,...siteMatches)}
    if(!raw.length)throw Error("No historical games have sufficient prior-game data for this venue. Try the other site setting or import more history.");
    const unique=new Map();
-   for(const x of raw){const scored=distance(current.v,x.v);if(!scored)continue;const env=environment(x.profile);const old=unique.get(String(x.g.id));if(!old||scored.distance<old.distance)unique.set(String(x.g.id),{...x,...scored,expectedPace:env.pace,expectedTotal:env.total,paceGap:Math.abs(env.pace-currentEnvironment.pace),totalGap:Math.abs(env.total-currentEnvironment.total)})}
+   for(const x of raw){const scored=distance(current.v,x.v);if(!scored)continue;const env=environment(x.profile);const old=unique.get(String(x.g.id));if(!old||scored.distance<old.distance)unique.set(String(x.g.id),{...x,...scored,expectedPace:env.pace,expectedTotal:env.total,expectedPaceA:env.paceA,expectedPaceB:env.paceB,paceGapA:Math.abs(env.paceA-currentEnvironment.paceA),paceGapB:Math.abs(env.paceB-currentEnvironment.paceB),paceGap:Math.abs(env.pace-currentEnvironment.pace),totalGap:Math.abs(env.total-currentEnvironment.total)})}
    const allRanked=[...unique.values()].sort((a,b)=>a.distance-b.distance).map(x=>({...x,market:{spread,total,providers:0},similarity:(window.CBBLabSimilarityScale?.score||((d)=>d===0?100:Math.min(99.9,100*Math.exp(-1.5*d*d))))(x.distance),current}));
-   const compatible=allRanked.filter(x=>x.paceGap<=5&&x.totalGap<=12);
+   const compatible=allRanked.filter(x=>x.paceGapA<=3&&x.paceGapB<=3&&x.paceGap<=3&&x.totalGap<=12);
    const tier=(lo,hi)=>compatible.filter(x=>x.similarity>=lo&&x.similarity<hi).length;
    const audit={eligible:compatible.length,environmentRejected:allRanked.length-compatible.length,currentExpectedTotal:currentEnvironment.total,currentExpectedPace:currentEnvironment.pace,seasons:targetSeasons.slice().sort((a,b)=>a-b),tier50_59:tier(50,60),tier60_69:tier(60,70),tier70_79:tier(70,80),tier80_89:tier(80,90),tier90_94:tier(90,95),tier95_100:tier(95,100.000001),atLeast60:tier(60,100.000001),pctAtLeast60:compatible.length?100*tier(60,100.000001)/compatible.length:0,max:compatible[0]?.similarity??null,meanCoverage:compatible.length?100*mean(compatible.map(x=>x.coverage)):0};
    const eligible=compatible.filter(x=>x.similarity>=60);const result=eligible.slice(0,Number.isFinite(count)?count:eligible.length);result.audit=audit;result.allMatches=eligible;return result;
@@ -148,7 +148,7 @@
  };
  function render(rows){
    const el=$("matchupCompsResults");
-   if(!rows.length){const a=rows.audit;el.className="results empty";el.textContent=a?("No historical matches met the 60% similarity floor and scoring-environment filters. "+a.eligible+" games passed the pace/total screen; "+a.environmentRejected+" were screened out. Best remaining similarity: "+(a.max===null?"—":a.max.toFixed(1)+"%")+". Current profile expectation: "+a.currentExpectedTotal.toFixed(1)+" total points at "+a.currentExpectedPace.toFixed(1)+" possessions."):"No sufficiently complete historical matchups found.";return}
+   if(!rows.length){const a=rows.audit;el.className="results empty";el.textContent=a?("No historical matches met the 60% similarity floor and scoring-environment filters. "+a.eligible+" games passed the both-team pace / total screen; "+a.environmentRejected+" were screened out. Best remaining similarity: "+(a.max===null?"—":a.max.toFixed(1)+"%")+". Current profile expectation: "+a.currentExpectedTotal.toFixed(1)+" total points at "+a.currentExpectedPace.toFixed(1)+" possessions."):"No sufficiently complete historical matchups found.";return}
    let win=0,loss=0,tie=0,atsW=0,atsL=0,atsP=0,ouW=0,ouL=0,ouP=0,atsN=0,ouN=0;
    const cards=rows.map(x=>{
      const g=x.g,homeMargin=N(g.homeScore)-N(g.awayScore),total=N(g.homeScore)+N(g.awayScore);
