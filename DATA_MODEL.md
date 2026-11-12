@@ -1,43 +1,61 @@
-# CBB LAB — Data model and ingestion plan
+# CBB LAB — Core data and model rules
 
-## Primary source and season mapping
-Use CollegeBasketballData (CBBD) as the first provider. Its API uses the same bearer key as CollegeFootballData (CFBD). The free tier currently documents 1,000 combined monthly calls. Use the API key only in a server-side environment variable named `CBBD_API_KEY`.
+## Purpose
+CBB LAB finds historical games that resemble a selected matchup in **both teams' pregame statistical fingerprints and pace**, then summarizes what happened in those games. Similarity is resemblance, not a prediction probability or a betting edge by itself.
 
-| CBB LAB season | CBBD season parameter |
-|---|---:|
-| 2021–22 | 2022 |
-| 2022–23 | 2023 |
-| 2023-24 | 2024 |
-| 2024-25 | 2025 |
-| 2025-26 | 2026 |
-| 2026-27 | 2027 |
+## Data source
+- Primary source: CollegeBasketballData (CBBD), using the server-side `CBBD_API_KEY`.
+- Season identifiers use the ending year: `2027` means 2026–27.
+- The importer currently targets men's Division I regular-season team-game box scores for seasons 2022–2027.
+- CBBD documents team box-score coverage from 2003 onward, with much broader populated box-score fields from 2005; individual fields and games can still be missing. Adjusted efficiency ratings have a shorter documented range (2014 onward). Check current CBBD data availability before expanding the import window.
+- Keep the API key server-side. The free API quota is shared with the user's College Football Data usage.
 
-## Dataset layers
-- **Games:** canonical schedule, final scores, date, home/away, neutral venue, source ID.
-- **Game-team stats:** separate row for each team in each game, including possessions, shooting, turnovers, rebounding and derived efficiency fields when supplied.
-- **Team-season stats:** provider season aggregates, stored separately from game-level records.
-- **Betting lines:** provider-specific market, selection, line, price, opening/closing/live label and timestamp.
-- **Coverage/import logs:** counts and missingness by provider, dataset and season.
+## The historical fingerprint
+For each team, build a pregame profile from its ten most recent completed team games available before the target game's date. Carry prior-season games into early-season profiles. Never include the target game, another game on the target date, or any future result.
 
-## Backfill approach
-The API caps game and team-box-score responses at 3,000 rows per request. A full season can exceed that, so split requests into date windows or conference/team batches. Persist each batch before requesting the next one; use source IDs and unique constraints so retries do not duplicate games. Start with games and team-game box scores, then season aggregates and odds. Keep requests comfortably below the free shared monthly quota, especially while the existing CFBD football work may also consume it.
+Each matchup fingerprint contains up to 30 values: 15 features for Team A and the same 15 for Team B, preserving team orientation:
+1. Opponent-adjusted offensive efficiency
+2. Opponent-adjusted defensive efficiency
+3. Average pace across the team's recent games
+4. Effective field-goal percentage
+5. Turnover rate
+6. Offensive-rebound rate
+7. Free-throw rate
+8. Three-point attempt rate
+9. Three-point percentage
+10. Two-point percentage
+11. Opponent effective-field-goal percentage
+12. Opponent turnover rate
+13. Opponent three-point attempt rate
+14. Opponent three-point percentage
+15. Opponent two-point percentage
 
-## Pregame similarity and validation protocol
-- Build each target team fingerprint from its ten most recent completed team games available before the target date; carry prior-season games forward during early-season windows.
-- Exclude every game on the target date from both teams’ pregame snapshots.
-- Compare full 30-feature matchup fingerprints (15 metrics per team), requiring at least 24 valid features overall and at least 12 from each team. Similarity is calibrated as `100 × exp(−1.5 × distance²)`; identical profiles score 100, while the 60% floor requires a materially tighter feature match than the previous scale.
-- Apply the same-site preference only when at least five same-site historical candidates are available; otherwise retain both venue types.
-- Require expected pace within five possessions and projected combined scoring within 12 points before accepting a historical analog; then apply the 60% absolute similarity floor.
-- The similarity predictability backtest must mirror the live ten-game window, venue preference, scoring-environment filters, and similarity floor. Report errors and empirical frequencies as historical diagnostics, never as guaranteed betting probabilities.
+Missing values remain missing; they are never replaced with zero. A comparison requires at least 24 valid features overall and at least 12 for each team. Small-sample offensive and defensive efficiency values are regressed toward the league average; pace is kept as the observed rolling average and is not shrunk toward league pace.
 
-## Validation before enabling analytics
-- Compare game counts with source season schedules and record unexplained gaps.
-- Check duplicate source game IDs, duplicate team-game rows and impossible scores.
-- Confirm exactly two team-stat rows per completed game where box-score coverage exists.
-- Check that possession, shooting and efficiency fields have plausible ranges and consistent units.
-- Track missing odds separately by provider and market. A missing line is not a push and not a zero.
-- Label every metric with source and definition. Avoid mixing percentage values stored as 0–1 with values stored as 0–100.
-- For pregame models, calculate rolling/team features only from games completed before the target tipoff.
+## Historical comparison rules
+- Compare Team A with historical Team A and Team B with historical Team B. Consider the reversed historical orientation only when it produces the closer full fingerprint.
+- Require each team's historical average pace to be within **2.0 possessions** of its corresponding target team's pace. Do not use spreads, totals, projected scoring, or historical betting lines to select, filter, rank, or score analogs.
+- Prefer the same venue type when at least five same-venue candidates are available; otherwise include both venue types.
+- Apply the 60% absolute fingerprint-similarity floor after calculating the full fingerprint distance. 80%+ is a strong resemblance; 90%+ is elite; 100% means identical under the defined feature distance.
+- Rank qualifying games by fingerprint similarity. Report each team's pace and pace difference alongside the similarity so the user can audit the match.
+- User-entered spread/total, when supplied, are applied only after analog selection to describe how historical outcomes would have graded against those lines. They never influence analog selection.
 
-## Important coverage notes
-CBBD documents broad team box-score coverage from 2005 onward, adjusted efficiency from 2014 onward, and betting lines from 2013 onward. Coverage varies by endpoint and individual game; a season being listed does not guarantee every record or field is complete.
+## What the results should show
+- Historical sample size and seasons represented.
+- Average and highest similarity, plus counts by similarity tier.
+- Each analog's actual score, aligned to Team A and Team B, and its two team-pace values/differences.
+- Distributions for combined points, Team A points, Team B points, and scoring margin; show mean, median, percentiles, and range.
+- Similarity-weighted summaries may supplement raw results, but always show the raw sample too. Show effective sample size when weighting is used.
+- Label small samples and limited feature coverage clearly. Historical frequencies are descriptive evidence, not guaranteed outcomes or calibrated forward probabilities.
+
+## Validation
+- Live Matchup Lab, Daily Slate Scanner, and walk-forward backtest must use the same 10-game pregame window, fingerprint features, feature scales/weights, 2-possession per-team pace gate, 60% similarity floor, and same-venue preference rule.
+- Backtest targets must be evaluated chronologically using only earlier completed games. Do not let same-day or future games leak into the target profile or its analog pool.
+- Compare results by similarity tier and report sample sizes and prediction errors. Do not describe a high historical hit rate as a lock without robust, out-of-sample evidence.
+- Validate source game IDs, duplicates, score/pace ranges, feature units, and per-season import coverage. Keep missingness visible.
+
+## Explicitly out of scope for the core matcher
+- Betting lines, closing-line value, and market movement.
+- Projected total or projected score as a similarity filter.
+- Team-season aggregates used as substitutes for missing game-level fingerprints.
+- Synthetic values for missing features.
