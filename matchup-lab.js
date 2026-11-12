@@ -29,33 +29,8 @@
    };
    return [row("home",g.homeTeam,g.awayTeam,hs,as,hp,ap),row("away",g.awayTeam,g.homeTeam,as,hs,ap,hp)];
  }
- function adjustedSnapshot(history,maxPerTeam=Infinity,seasonPaceHistory=history){
-   const rows=history.flatMap(gameRows),byTeam=new Map();
-   const seasonPaceRows=seasonPaceHistory.flatMap(gameRows),seasonPaceByTeam=new Map();
-   seasonPaceRows.forEach(r=>{if(!seasonPaceByTeam.has(r.team))seasonPaceByTeam.set(r.team,[]);seasonPaceByTeam.get(r.team).push(r.pace)});
-   if(!rows.length)return new Map();
-   rows.forEach(r=>{if(!byTeam.has(r.team))byTeam.set(r.team,[]);byTeam.get(r.team).push(r)});
-   for(const [team,list] of byTeam){list.sort((a,b)=>String(a.game.gameDate||"").localeCompare(String(b.game.gameDate||"")));if(list.length>maxPerTeam)byTeam.set(team,list.slice(-maxPerTeam));}
-   const modelRows=[...byTeam.values()].flat();
-   const teams=[...byTeam.keys()],lgO=mean(modelRows.map(r=>r.off)),lgD=mean(modelRows.map(r=>r.def)),lgP=mean(modelRows.map(r=>r.pace));
-   const league={};FEATURE_KEYS.slice(3).forEach(k=>league[k]=mean(modelRows.map(r=>r[k]).filter(Number.isFinite)));
-   let cur=new Map(teams.map(t=>{const a=byTeam.get(t),v={n:a.length,o:mean(a.map(x=>x.off)),d:mean(a.map(x=>x.def)),p:mean(a.map(x=>x.pace))};FEATURE_KEYS.slice(3).forEach(k=>v[k]=mean(a.map(x=>x[k]).filter(Number.isFinite)));return [t,v]}));
-   for(let k=0;k<10;k++){
-     const next=new Map();
-     for(const t of teams){
-       const a=byTeam.get(t),n=a.length,w=n/(n+5);
-       const o=mean(a.map(r=>r.off-((cur.get(r.opp)?.d??lgD)-lgD)));
-       const d=mean(a.map(r=>r.def-((cur.get(r.opp)?.o??lgO)-lgO)));
-       // Pace is a shared game-environment outcome, not an opponent-adjusted team strength.
-       const p=mean(a.map(r=>r.pace));
-       // Pace is observed possessions, not team strength: never shrink it toward league pace.
-       const seasonPace=mean(seasonPaceByTeam.get(t)||[]);const v={o:w*o+(1-w)*lgO,d:w*d+(1-w)*lgD,p:seasonPace??p,n};
-       FEATURE_KEYS.slice(3).forEach(f=>{const z=mean(a.map(r=>r[f]).filter(Number.isFinite)),prior=league[f];v[f]=z===null?null:(prior===null?z:w*z+(1-w)*prior)});
-       next.set(t,v);
-     }
-     cur=next;
-   }
-   return cur;
+ function adjustedSnapshot(history,maxPerTeam=10,seasonPaceHistory=history){
+   return window.CBBAdjustedRatings.build(history,{maxPerTeam,paceGames:seasonPaceHistory});
  }
  function vector(snap,teamA,teamB,minGames=5){
    const a=snap.get(teamA),b=snap.get(teamB);
