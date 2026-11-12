@@ -2,7 +2,7 @@
    Uses the same 15-feature set, units, weights and strict coverage gate as Matchup Lab. */
 (function(g){
  const K=["adjOff","adjDef","pace","efg","tov","orb","ftr","threeRate","threePct","twoPct","oppEfg","oppTov","oppThreeRate","oppThreePct","oppTwoPct"];
- const W=[1.5,1.5,.9,1.15,.9,.85,.65,.8,1,.9,1.15,.75,.75,.9,.8],S=[6,6,4,5,4,6,8,8,5,5,5,4,8,5,5];
+ const W=[1.5,1.5,2.0,1.15,.9,.85,.65,.8,1,.9,1.15,.75,.75,.9,.8],S=[6,6,3,5,4,6,8,8,5,5,5,4,8,5,5];
  const score=d=>d===0?100:Math.min(99.9,100*Math.exp(-1.5*d*d));
  function dist(a,b){let sum=0,w=0,used=0;for(let i=0;i<K.length;i++){const x=a[K[i]],y=b[K[i]];if(!Number.isFinite(x)||!Number.isFinite(y))continue;const z=(x-y)/S[i];sum+=W[i]*z*z;w+=W[i];used++}return used>=12&&w?Math.sqrt(sum/w):null}
  function profiles(games){if(!g.CBBTeamProfiles?.build)return[];return g.CBBTeamProfiles.build(games).filter(p=>p.games>=5).map(p=>({...p,team:p.team,season:p.season}))}
