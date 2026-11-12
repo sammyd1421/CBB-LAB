@@ -44,7 +44,8 @@
        const a=byTeam.get(t),n=a.length,w=n/(n+5);
        const o=mean(a.map(r=>r.off-((cur.get(r.opp)?.d??lgD)-lgD)));
        const d=mean(a.map(r=>r.def-((cur.get(r.opp)?.o??lgO)-lgO)));
-       const p=mean(a.map(r=>r.pace-((cur.get(r.opp)?.p??lgP)-lgP)+lgP));
+       // Pace is a shared game-environment outcome, not an opponent-adjusted team strength.
+       const p=mean(a.map(r=>r.pace));
        const v={o:w*o+(1-w)*lgO,d:w*d+(1-w)*lgD,p:w*p+(1-w)*lgP,n};
        FEATURE_KEYS.slice(3).forEach(f=>{const z=mean(a.map(r=>r[f]).filter(Number.isFinite)),prior=league[f];v[f]=z===null?null:(prior===null?z:w*z+(1-w)*prior)});
        next.set(t,v);
