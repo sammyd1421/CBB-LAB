@@ -190,3 +190,24 @@ footer{gap:10px;flex-wrap:wrap}
 .fingerprint-radar p{font-size:10px;color:var(--muted);margin:7px 0 0}
 @media(min-width:760px){.fingerprint-overlays{display:grid;grid-template-columns:1fr 1fr;gap:10px}.fingerprint-overlays>p{grid-column:1/-1}}
 @media(max-width:480px){.fingerprint-match>summary{align-items:flex-start;flex-direction:column}.fingerprint-match>summary strong{align-self:flex-start}}
+
+/* Matchup Lab: paired opponent-adjusted team profiles */
+.matchup-team-profiles{margin:18px 0;padding:14px;background:#0d1928;border:1px solid var(--line);border-radius:11px}
+.matchup-team-profiles>h4{margin:0 0 5px;font-size:15px}
+.matchup-pace-strip{display:grid;grid-template-columns:1fr .8fr 1fr;gap:8px;margin:12px 0}
+.matchup-pace-strip>div{padding:12px;background:#132337;border:1px solid var(--line);border-radius:9px;min-width:0}
+.matchup-pace-strip small{display:block;color:var(--muted);font-size:9px;line-height:1.4}
+.matchup-pace-strip b{display:block;font-size:25px;margin:3px 0}
+.matchup-pace-strip>div:last-child{text-align:right}
+.matchup-pace-strip .pace-delta{text-align:center;background:#182b40}
+.matchup-strength-grid{grid-template-columns:repeat(4,minmax(0,1fr));margin:8px 0 14px}
+.matchup-strength-grid b{font-size:18px}
+.matchup-profile-radars{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.matchup-team-radar{margin:0;padding:8px}
+.matchup-team-radar svg{max-height:260px}
+.matchup-radar-values{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin-top:8px}
+.matchup-radar-values>span{display:block;padding:5px;background:#142337;border-radius:5px;font-size:9px;color:var(--muted)}
+.matchup-radar-values b{display:block;color:var(--text);font-size:10px}
+.matchup-radar-values small{display:block;color:var(--muted);font-size:8px}
+@media(max-width:800px){.matchup-profile-radars{grid-template-columns:1fr}.matchup-strength-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:440px){.matchup-pace-strip{grid-template-columns:1fr 1fr}.matchup-pace-strip .pace-delta{grid-column:1/-1;grid-row:2}.matchup-pace-strip>div:last-child{text-align:left}}
