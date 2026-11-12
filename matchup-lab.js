@@ -123,7 +123,7 @@
    const raw=[];
    // Rebuild a strictly pregame snapshot for each historical matchup.
    for(const g of historical){
-     const cutoff=String(g.gameDate||"");if(!cutoff)continue;
+     const cutoff=String(g.gameDate||"").slice(0,10);if(!cutoff)continue;
      const snap=built.snapshots.get(String(g.season)+"|"+cutoff)||new Map();
      const h=vector(snap,g.homeTeam,g.awayTeam,5),a=vector(snap,g.awayTeam,g.homeTeam,5);
      if(h)raw.push({g,orientation:"home",v:h.v,profile:h});
@@ -143,7 +143,7 @@
  // Publish the scanner API immediately after the engine is defined, before UI initialization.
  window.CBBLabScanner={
    loadGames:()=>read("games"),
-   compare:(games,home,away,neutral,years)=>candidates(games,home,away,years,50000,null,null,neutral)
+   compare:(games,home,away,neutral,years,targetDate)=>candidates(games,home,away,years,50000,null,null,neutral,targetDate)
  };
  function render(rows){
    const el=$("matchupCompsResults");
