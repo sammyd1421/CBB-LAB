@@ -17,7 +17,7 @@
  const FEATURE_GROUPS=["efficiency","efficiency","pace","shooting","ball security","rebounding","shot profile","shot profile","shooting","shooting","defense","defense","defense","defense","defense"];
  const FEATURE_WEIGHTS=[1.5,1.5,2.0,1.15,.9,.85,.65,.8,1.0,.9,1.15,.75,.75,.9,.8];
  function gameRows(g){
-   const hs=N(g.homeScore),as=N(g.awayScore),hp=N(g.home_pace),ap=N(g.away_pace);
+   const hs=N(g.homeScore),as=N(g.awayScore),hp=pct(N(g.home_pace)),ap=pct(N(g.away_pace));
    const pace=mean([hp,ap]);
    if(!g.homeTeam||!g.awayTeam||hs===null||as===null||!Number.isFinite(hp)||!Number.isFinite(ap)||hp<=0||ap<=0||!Number.isFinite(pace))return [];
    const row=(side,team,opp,score,oppScore,ownP,oppP)=>{
