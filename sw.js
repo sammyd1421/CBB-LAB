@@ -1,8 +1,8 @@
-const CACHE_NAME="cbb-lab-shell-v29";
+const CACHE_NAME="cbb-lab-shell-v30";
 const APP_SHELL=[
   "/",
   "/index.html",
-  "/style.css?v=20261112-shared-pace-engine1",
+  "/style.css?v=20261112-team-profile-radars1",
   "/manifest.webmanifest",
   "/icons/cbb-lab.svg",
   "/similarity.js",
