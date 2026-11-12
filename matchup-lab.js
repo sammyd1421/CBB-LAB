@@ -18,8 +18,8 @@
  const FEATURE_WEIGHTS=[1.5,1.5,2.0,1.15,.9,.85,.65,.8,1.0,.9,1.15,.75,.75,.9,.8];
  function gameRows(g){
    const hs=N(g.homeScore),as=N(g.awayScore),hp=N(g.home_pace),ap=N(g.away_pace);
-   const pace=mean([hp,ap].filter(Number.isFinite));
-   if(!g.homeTeam||!g.awayTeam||hs===null||as===null||pace===null||pace<=0)return [];
+   const pace=mean([hp,ap]);
+   if(!g.homeTeam||!g.awayTeam||hs===null||as===null||!Number.isFinite(hp)||!Number.isFinite(ap)||hp<=0||ap<=0||!Number.isFinite(pace))return [];
    const row=(side,team,opp,score,oppScore,ownP,oppP)=>{
      const other=side==="home"?"away":"home",v=k=>pct(N(g[side+"_"+k])),ov=k=>pct(N(g[other+"_"+k]));
      return {team,opp,season:String(g.season),date:String(g.gameDate||""),game:g,side,
@@ -46,7 +46,8 @@
        const d=mean(a.map(r=>r.def-((cur.get(r.opp)?.o??lgO)-lgO)));
        // Pace is a shared game-environment outcome, not an opponent-adjusted team strength.
        const p=mean(a.map(r=>r.pace));
-       const v={o:w*o+(1-w)*lgO,d:w*d+(1-w)*lgD,p:w*p+(1-w)*lgP,n};
+       // Pace is observed possessions, not team strength: never shrink it toward league pace.
+       const v={o:w*o+(1-w)*lgO,d:w*d+(1-w)*lgD,p,n};
        FEATURE_KEYS.slice(3).forEach(f=>{const z=mean(a.map(r=>r[f]).filter(Number.isFinite)),prior=league[f];v[f]=z===null?null:(prior===null?z:w*z+(1-w)*prior)});
        next.set(t,v);
      }
