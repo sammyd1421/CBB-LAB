@@ -10,15 +10,15 @@ CBB LAB finds historical games that resemble a selected matchup in **both teams'
 - CBBD documents team box-score coverage from 2003 onward, with much broader populated box-score fields from 2005; individual fields and games can still be missing. Adjusted efficiency ratings have a shorter documented range (2014 onward). Check current CBBD data availability before expanding the import window.
 - Keep the API key server-side. The free API quota is shared with the user's College Football Data usage.
 
-CBBD defines `pace` as game pace (possessions per game), not an independently observed team-only possession count. The importer stores the same game-pace observation on both team sides of each game. A team profile is the average pace of the games that team played; its rolling pregame value is based on the ten most recent completed games. This is distinct from the full-season average shown on the Team Profile page.
+CBBD defines `pace` as game pace (possessions per game), not an independently observed team-only possession count. The importer stores the same game-pace observation on both team sides of each game. A team profile is the average pace of the games that team played; its rolling pregame value is based on the ten most recent completed games for non-pace features; season-to-date average for pace. This is distinct from the full-season average shown on the Team Profile page.
 
 ## The historical fingerprint
-For each team, build a pregame profile from its ten most recent completed team games available before the target game's date. Carry prior-season games into early-season profiles. Never include the target game, another game on the target date, or any future result.
+For each team, build a pregame profile from a pregame profile before the target game's date. Efficiency and style features use the ten most recent completed team games (carrying prior-season games into early-season profiles); pace uses that team's current-season-to-date average, matching the Team Explorer pace definition without including the target game or future games. Never include the target game, another game on the target date, or any future result.
 
 Each matchup fingerprint contains up to 30 values: 15 features for Team A and the same 15 for Team B, preserving team orientation:
 1. Opponent-adjusted offensive efficiency
 2. Opponent-adjusted defensive efficiency
-3. Average pace across the team's recent games
+3. Current-season-to-date average game pace
 4. Effective field-goal percentage
 5. Turnover rate
 6. Offensive-rebound rate
@@ -36,7 +36,7 @@ Missing values remain missing; they are never replaced with zero. A comparison r
 
 ## Historical comparison rules
 - Compare Team A with historical Team A and Team B with historical Team B. Consider the reversed historical orientation only when it produces the closer full fingerprint.
-- Require each team's historical rolling pregame average game pace to be within **1.0 possession** of its corresponding target team's rolling pregame pace. Pace must be finite for both teams; otherwise the comparison is rejected. Never substitute the completed historical matchup's actual game pace, since that is a postgame outcome. Do not use spreads, totals, projected scoring, or historical betting lines to select, filter, rank, or score analogs.
+- Require each team's historical season-to-date pregame average game pace to be within **1.0 possession** of its corresponding target team's rolling pregame pace. Pace must be finite for both teams; otherwise the comparison is rejected. Never substitute the completed historical matchup's actual game pace, since that is a postgame outcome. Do not use spreads, totals, projected scoring, or historical betting lines to select, filter, rank, or score analogs.
 - Prefer the same venue type when at least five same-venue candidates are available; otherwise include both venue types.
 - Apply the 80% absolute fingerprint-similarity floor after calculating the full fingerprint distance. 80%+ is the minimum strong resemblance; 90%+ is elite; 100% means identical under the defined feature distance.
 - Rank qualifying games by fingerprint similarity. Report each team's pace and pace difference alongside the similarity so the user can audit the match.
@@ -51,7 +51,7 @@ Missing values remain missing; they are never replaced with zero. A comparison r
 - Label small samples and limited feature coverage clearly. Historical frequencies are descriptive evidence, not guaranteed outcomes or calibrated forward probabilities.
 
 ## Validation
-- Live Matchup Lab, Daily Slate Scanner, and walk-forward backtest must use the same 10-game pregame window, fingerprint features, feature scales/weights, 1-possession per-team rolling pregame pace gate, 80% similarity floor, and same-venue preference rule.
+- Live Matchup Lab, Daily Slate Scanner, and walk-forward backtest must use the same 10-game pregame window, fingerprint features, feature scales/weights, 1-possession per-team season-to-date pregame pace gate, 80% similarity floor, and same-venue preference rule.
 - Backtest targets must be evaluated chronologically using only earlier completed games. Do not let same-day or future games leak into the target profile or its analog pool.
 - Compare results by similarity tier and report sample sizes and prediction errors. Do not describe a high historical hit rate as a lock without robust, out-of-sample evidence.
 - Validate source game IDs, duplicates, score/pace ranges, feature units, and per-season import coverage. Keep missingness visible.
