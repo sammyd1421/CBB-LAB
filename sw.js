@@ -1,8 +1,8 @@
-const CACHE_NAME="cbb-lab-shell-v19";
+const CACHE_NAME="cbb-lab-shell-v20";
 const APP_SHELL=[
   "/",
   "/index.html",
-  "/style.css?v=20261111-radar1",
+  "/style.css?v=20261111-radar70",
   "/manifest.webmanifest",
   "/icons/cbb-lab.svg",
   "/similarity.js",
@@ -11,10 +11,10 @@ const APP_SHELL=[
   "/app.js",
   "/cbbd-import.js",
   "/ratings-import.js",
-  "/matchup-lab.js?v=20261111-radar1",
+  "/matchup-lab.js?v=20261111-radar70",
   "/schedule.js",
-  "/slate-scanner.js?v=20261111-radar1",
-  "/similarity-backtest.js?v=20261111-radar1",
+  "/slate-scanner.js?v=20261111-radar70",
+  "/similarity-backtest.js?v=20261111-radar70",
   "/backtest.js"
 ];
 self.addEventListener("install",event=>{
