@@ -33,7 +33,7 @@
    const seasonGames=games.filter(x=>String(x.season)===season);
    const ratings=g.CBBAdjustedRatings.build(seasonGames,{maxPerTeam:Infinity,paceGames:seasonGames});
    const values=[...ratings.values()],leagueOff=mean(values.map(x=>x.o)),leagueDef=mean(values.map(x=>x.d));
-   out.filter(p=>p.season===season).forEach(p=>{const q=ratings.get(p.team);if(q){p.adjOff=q.o;p.adjDef=q.d;p.pace=q.p;p.offEff=q.rawO;p.defEff=q.rawD;p.homeCourtEstimate=q.homeCourtEstimate;p.leagueOff=leagueOff;p.leagueDef=leagueDef}});
+   out.filter(p=>p.season===season).forEach(p=>{const q=ratings.get(p.team);if(q){p.adjOff=q.o;p.adjDef=q.d;p.pace=q.p;p.offEff=q.rawO;p.defEff=q.rawD;p.oppEfg=q.oppEfg;p.oppTov=q.oppTov;p.oppThreeRate=q.oppThreeRate;p.oppThreePct=q.oppThreePct;p.oppTwoPct=q.oppTwoPct;p.homeCourtEstimate=q.homeCourtEstimate;p.leagueOff=leagueOff;p.leagueDef=leagueDef}});
   });
   seasons.forEach(season=>{
    const ps=out.filter(p=>p.season===season);
