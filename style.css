@@ -162,3 +162,31 @@ footer{gap:10px;flex-wrap:wrap}
 
 /* PWA install guidance */
 .install-panel{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 16px;align-items:center;border-color:#35506d;background:linear-gradient(120deg,#142b3c,#111d2d)}.install-panel h3{margin-bottom:2px}.install-panel p{margin:3px 0}.install-help{grid-column:1/-1;border-top:1px solid var(--line);padding-top:10px;font-size:12px}.install-help ol{padding-left:20px;margin:8px 0}.install-help li{margin:5px 0}@media(max-width:520px){.install-panel{grid-template-columns:1fr}.install-panel button{width:100%}}
+
+/* Matchup Lab: paired radar overlays for every qualifying historical comparison */
+.fingerprint-match{border:1px solid var(--line);border-radius:10px;background:#0d1826;margin:9px 0;overflow:hidden}
+.fingerprint-match>summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px}
+.fingerprint-match>summary::-webkit-details-marker{display:none}
+.fingerprint-match>summary span{min-width:0}
+.fingerprint-match>summary b,.fingerprint-match>summary small{display:block}
+.fingerprint-match>summary small{color:var(--muted);font-size:10px;margin-top:3px}
+.fingerprint-match>summary strong{flex:0 0 auto}
+.fingerprint-match[open]>summary{border-bottom:1px solid var(--line);background:#122337}
+.fingerprint-overlays{padding:10px}
+.fingerprint-overlays>p{margin:2px 0 8px}
+.fingerprint-radar{background:#101e30;border:1px solid var(--line);border-radius:9px;padding:10px;min-width:0;margin:8px 0}
+.fingerprint-radar h5{font-size:12px;margin:0 0 2px}
+.fingerprint-radar svg{display:block;width:100%;max-height:300px}
+.fp-ring{fill:none;stroke:#31445a;stroke-width:1}
+.fp-axis{stroke:#344960;stroke-width:1}
+.fp-label{fill:#a9bacd;font-size:8px}
+.fp-target{fill:rgba(103,224,189,.13);stroke:#67e0bd;stroke-width:2}
+.fp-historical{fill:rgba(117,160,255,.16);stroke:#82aaff;stroke-width:2}
+.fp-center{fill:#dce8f5}
+.fp-legend{display:flex;gap:15px;flex-wrap:wrap;font-size:10px;color:var(--muted)}
+.fp-legend span{display:flex;align-items:center;gap:5px}
+.fp-legend i{width:9px;height:9px;display:inline-block;border-radius:2px}
+.fp-target-key{background:#67e0bd}.fp-historical-key{background:#82aaff}
+.fingerprint-radar p{font-size:10px;color:var(--muted);margin:7px 0 0}
+@media(min-width:760px){.fingerprint-overlays{display:grid;grid-template-columns:1fr 1fr;gap:10px}.fingerprint-overlays>p{grid-column:1/-1}}
+@media(max-width:480px){.fingerprint-match>summary{align-items:flex-start;flex-direction:column}.fingerprint-match>summary strong{align-self:flex-start}}
