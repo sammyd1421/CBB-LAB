@@ -41,9 +41,20 @@
    for(const t of paceTeams){const a=paceBy.get(t),w=a.length/(a.length+6),p=mean(a.map(r=>r.pace-((tempo.get(r.opp)??lgP)-lgP)));nextTempo.set(t,w*p+(1-w)*lgP)}
    tempo=nextTempo;
   }
+  // Adjust opponent shooting/ball-security outcomes for the offensive quality
+  // and tendencies of the teams faced. A defense is not credited/blamed for
+  // allowing a high eFG or 3P% against an elite shooting opponent at face value.
+  const offenseProfile=new Map();
+  for(const t of teams){const a=by.get(t),p={};["efg","tov","threeRate","threePct","twoPct"].forEach(k=>p[k]=mean(a.map(r=>r[k]).filter(Number.isFinite)));offenseProfile.set(t,p)}
+  const defensiveMap={oppEfg:"efg",oppTov:"tov",oppThreeRate:"threeRate",oppThreePct:"threePct",oppTwoPct:"twoPct"};
   const result=new Map();
   for(const t of teams){const a=by.get(t),q=cur.get(t),w=a.length/(a.length+6),v={n:a.length,o:q.o,d:q.d,p:tempo.get(t)??mean(a.map(r=>r.pace)),rawO:mean(a.map(r=>r.off)),rawD:mean(a.map(r=>r.def)),rawP:mean((paceBy.get(t)||[]).map(r=>r.pace)),homeCourtEstimate:hca};
-   KEYS.forEach(k=>{const z=mean(a.map(r=>r[k]).filter(Number.isFinite)),prior=league[k];v[k]=z===null?null:(prior===null?z:w*z+(1-w)*prior)});result.set(t,v)}
+   KEYS.filter(k=>!defensiveMap[k]).forEach(k=>{const z=mean(a.map(r=>r[k]).filter(Number.isFinite)),prior=league[k];v[k]=z===null?null:(prior===null?z:w*z+(1-w)*prior)});
+   Object.entries(defensiveMap).forEach(([allowedKey,offKey])=>{
+    const adjusted=a.map(r=>{const opp=offenseProfile.get(r.opp),oppMean=opp?.[offKey],leagueMean=league[offKey];return Number.isFinite(r[allowedKey])&&Number.isFinite(oppMean)&&Number.isFinite(leagueMean)?r[allowedKey]-(oppMean-leagueMean):null}).filter(Number.isFinite);
+    const z=mean(adjusted),prior=league[allowedKey];v[allowedKey]=z===null?null:(prior===null?z:w*z+(1-w)*prior);
+   });
+   result.set(t,v)}
   return result;
  }
  g.CBBAdjustedRatings={build,rowsFrom};
