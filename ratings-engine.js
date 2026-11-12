@@ -11,7 +11,7 @@
   if(!g.homeTeam||!g.awayTeam||hs===null||as===null||!(hp>0)||!(ap>0))return[];
   const make=(side,team,opp,score,against,pace)=>{
    const other=side==="home"?"away":"home",v=k=>pct(N(g[side+"_"+k])),ov=k=>pct(N(g[other+"_"+k]));
-   return{team,opp,home:side==="home",neutral:!!g.neutralSite,off:score/pace*100,def:against/pace*100,pace,
+   return{team,opp,gameId:String(g.id??g.sourceGameId??g.gameDate??""),gameDate:g.gameDate||"",home:side==="home",neutral:!!g.neutralSite,off:score/pace*100,def:against/pace*100,pace,
     efg:v("efg"),tov:v("tov"),orb:v("orb"),ftr:v("ftr"),threeRate:v("threeRate"),threePct:v("threePct"),twoPct:v("twoPct"),
     oppEfg:ov("efg"),oppTov:ov("tov"),oppThreeRate:ov("threeRate"),oppThreePct:ov("threePct"),oppTwoPct:ov("twoPct")};
   };
@@ -23,8 +23,9 @@
   paceRows.forEach(r=>{if(!paceBy.has(r.team))paceBy.set(r.team,[]);paceBy.get(r.team).push(r)});
   for(const [t,a] of by){a.sort((x,y)=>String(x.gameDate||"").localeCompare(String(y.gameDate||"")));if(a.length>max)by.set(t,a.slice(-max))}
   if(!by.size)return new Map();
-  const model=[...by.values()].flat(),teams=[...by.keys()],homeDiff=[];
-  for(const r of all){if(!r.home||r.neutral)continue;const away=all.find(x=>x.team===r.opp&&x.opp===r.team&&!x.home);if(away)homeDiff.push(r.off-away.off)}
+  const model=[...by.values()].flat(),teams=[...by.keys()],homeDiff=[],paired=new Map();
+  all.forEach(r=>{if(!r.neutral){if(!paired.has(r.gameId))paired.set(r.gameId,[]);paired.get(r.gameId).push(r)}});
+  for(const pair of paired.values()){const h=pair.find(r=>r.home),a=pair.find(r=>!r.home);if(h&&a)homeDiff.push(h.off-a.off)}
   const hca=mean(homeDiff)||0,half=hca/2;
   model.forEach(r=>{r.no=r.off-(r.neutral?0:(r.home?half:-half));r.nd=r.def+(r.neutral?0:(r.home?half:-half))});
   const lgO=mean(model.map(r=>r.no)),lgD=mean(model.map(r=>r.nd)),lgP=mean(paceRows.map(r=>r.pace)),league={};
