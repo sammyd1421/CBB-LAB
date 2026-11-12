@@ -28,27 +28,12 @@
   });
   // Same schedule-adjusted neutral-court efficiency and opponent-adjusted tempo
   // engine used by Matchup Lab; Team Explorer retains its existing presentation.
+  const seasons=[...new Set(out.map(p=>p.season))];
   seasons.forEach(season=>{
    const seasonGames=games.filter(x=>String(x.season)===season);
    const ratings=g.CBBAdjustedRatings.build(seasonGames,{maxPerTeam:Infinity,paceGames:seasonGames});
    const values=[...ratings.values()],leagueOff=mean(values.map(x=>x.o)),leagueDef=mean(values.map(x=>x.d));
    out.filter(p=>p.season===season).forEach(p=>{const q=ratings.get(p.team);if(q){p.adjOff=q.o;p.adjDef=q.d;p.pace=q.p;p.offEff=q.rawO;p.defEff=q.rawD;p.homeCourtEstimate=q.homeCourtEstimate;p.leagueOff=leagueOff;p.leagueDef=leagueDef}});
-  });
-  seasons.forEach(season=>{
-   const ps=out.filter(p=>p.season===season),by=new Map(ps.map(p=>[p.team,p])),leagueO=mean(ps.map(p=>p.offEff)),leagueD=mean(ps.map(p=>p.defEff));
-   ps.forEach(p=>{p.leagueOff=leagueO;p.leagueDef=leagueD});
-   let current=new Map(ps.map(p=>[p.team,{o:p.offEff,d:p.defEff}]));
-   for(let iter=0;iter<8;iter++){
-    const next=new Map();
-    ps.forEach(p=>{
-     const rows=games.filter(x=>String(x.season)===season&&((x.homeTeam===p.team)||(x.awayTeam===p.team)));
-     const oppO=[],oppD=[];
-     rows.forEach(x=>{const opp=x.homeTeam===p.team?x.awayTeam:x.homeTeam;const q=current.get(opp);if(q){oppO.push(q.o);oppD.push(q.d)}});
-     const adjO=p.offEff-(mean(oppD)-leagueD||0),adjD=p.defEff-(mean(oppO)-leagueO||0),w=p.games/(p.games+5);
-     next.set(p.team,{o:w*adjO+(1-w)*leagueO,d:w*adjD+(1-w)*leagueD});
-    });current=next;
-   }
-   ps.forEach(p=>{const q=current.get(p.team);if(q){p.adjOff=q.o;p.adjDef=q.d}});
   });
   seasons.forEach(season=>{
    const ps=out.filter(p=>p.season===season);
