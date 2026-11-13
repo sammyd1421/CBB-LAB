@@ -17,7 +17,7 @@
  const sorted=()=>schedule.filter(g=>g.homeTeam&&g.awayTeam&&g.startDate&&!isFinished(g)).sort((a,b)=>a.startDate.localeCompare(b.startDate));
  function refreshDates(){
    const d=$("scheduleDate"),select=$("scheduleGame");if(!d||!select)return;
-   const days=[...new Set(sorted().map(dateKey))].sort(),today=iso(new Date());
+   const days=[...new Set(sorted().map(dateKey))].sort(),now=new Date(),today=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0");
    if(!d.value)d.value=days.includes(today)?today:(days.find(x=>x>=today)||days[days.length-1]||today);
    if(days.length&&!days.includes(d.value))d.value=days.find(x=>x>=today)||days[days.length-1];
    const games=sorted().filter(g=>dateKey(g)===d.value);
