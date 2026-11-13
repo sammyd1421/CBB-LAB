@@ -56,7 +56,7 @@
   const qBy=new Map();for(const r of adjRows){if(!qBy.has(r.team))qBy.set(r.team,[]);qBy.get(r.team).push(r)}
   let offense=new Map(teams.map(t=>[t,0])),defense=new Map(teams.map(t=>[t,0]));
   const lambda=5;
-  for(let iter=0;iter<100;iter++){
+  for(let iter=0;iter<12;iter++){
    const nextO=new Map(),nextD=new Map();
    for(const t of teams){
     const a=qBy.get(t)||[],o=wmean(a.map(r=>({v:r.no-leagueO-(defense.get(r.opp)||0),w:r.weight}))),d=wmean(a.map(r=>({v:r.nd-leagueD-(offense.get(r.opp)||0),w:r.weight})));
