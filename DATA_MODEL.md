@@ -61,3 +61,12 @@ Missing values remain missing; they are never replaced with zero. A comparison r
 - Projected total or projected score as a similarity filter.
 - Team-season aggregates used as substitutes for missing game-level fingerprints.
 - Synthetic values for missing features.
+
+
+## Opponent-adjusted ratings engine v2 (2026-11-12)
+- Efficiency is fitted from paired team-game observations (points per 100 CBBD game-pace possessions), with a neutral-court home-site correction.
+- Team offense and defense effects are solved jointly against opponent effects for 100 iterations, with ridge-style shrinkage toward the current-season league baseline. Current-season games carry full weight; prior seasons are weak, decaying priors (0.12 weight for the immediately prior season, then 0.45 decay per additional season).
+- Tempo is a separate additive opponent-adjusted model: shared game pace = league tempo + both teams' tempo effects. The output is the league baseline plus each team's effect. Tempo uses the supplied current-season pace history in Matchup Lab.
+- Quality ratings use all available pregame history, not only the last ten games. The ten-game limit remains only for recent style-fingerprint statistics. Team Explorer may use its full selected-season style sample.
+- This is an in-house ridge-style iterative approximation, not a reproduction of CBB Analytics' ridge regression implementation. Do not claim equivalence. Compare outputs to independent public benchmarks and run chronological validation before relying on the ratings.
+- CBBD supplies game pace shared by both teams; this is not independently tracked team possession count. Missing pace or box-score fields remain missing and do not become zero.
