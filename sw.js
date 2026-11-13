@@ -1,4 +1,4 @@
-const CACHE_NAME="cbb-lab-shell-v39";
+const CACHE_NAME="cbb-lab-shell-v43";
 const APP_SHELL=[
   "/",
   "/index.html",
@@ -6,13 +6,13 @@ const APP_SHELL=[
   "/manifest.webmanifest",
   "/icons/cbb-lab.svg",
   "/similarity.js?v=20261112-four-factors1",
-  "/ratings-engine.js?v=20261112-four-factors1",
+  "/ratings-engine.js?v=20261113-generate-fix1",
   "/team-profiles.js?v=20261112-four-factors1",
   "/projections.js",
   "/app.js",
   "/cbbd-import.js",
   "/ratings-import.js",
-  "/matchup-lab.js?v=20261112-performance1",
+  "/matchup-lab.js?v=20261113-generate-fix1",
   "/schedule.js?v=20261112-browser-local-time1",
   "/slate-scanner.js?v=20261112-browser-local-time1",
   "/similarity-backtest.js?v=20261112-adjusted-validation1",
