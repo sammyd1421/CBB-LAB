@@ -40,7 +40,7 @@
    const hca=mean([a.homeCourtEstimate,b.homeCourtEstimate].filter(Number.isFinite))||0;
    return {v,a,b,leagueOff,hca,snap,coverage:v.filter(Number.isFinite).length/v.length};
  }
- const FEATURE_SCALES=[6,6,3,5,4,6,8,8,5,5,5,4,8,5,5];
+ const FEATURE_SCALES=[6,6,3,5,4,6,8,8,5,5,5,4,8,5,5,5,5];
  function distance(v1,v2){
    let sum=0,weight=0,used=0;
    const details={efficiency:{sum:0,w:0},pace:{sum:0,w:0},shooting:{sum:0,w:0},rebounding:{sum:0,w:0},ballSecurity:{sum:0,w:0},defense:{sum:0,w:0},shotProfile:{sum:0,w:0}};
@@ -110,7 +110,6 @@
      const seasons=[...new Set(day.map(g=>String(g.season)))];
      seasons.forEach(season=>snapshots.set(season+"|"+date,adjustedSnapshot(prior,10,prior.filter(g=>String(g.season)===season))));
      prior.push(...day);
-     seasons.forEach(season=>seasonFinal.set(season,adjustedSnapshot(prior,10)));
      i=j;
    }
    return {snapshots};
