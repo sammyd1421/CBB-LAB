@@ -56,7 +56,7 @@
   const qBy=new Map();for(const r of adjRows){if(!qBy.has(r.team))qBy.set(r.team,[]);qBy.get(r.team).push(r)}
   let offense=new Map(teams.map(t=>[t,0])),defense=new Map(teams.map(t=>[t,0]));
   const lambda=5;
-  for(let iter=0;iter<12;iter++){
+  for(let iter=0;iter<30;iter++){
    const nextO=new Map(),nextD=new Map();
    for(const t of teams){
     const a=qBy.get(t)||[],o=wmean(a.map(r=>({v:r.no-leagueO-(defense.get(r.opp)||0),w:r.weight}))),d=wmean(a.map(r=>({v:r.nd-leagueD-(offense.get(r.opp)||0),w:r.weight})));
@@ -71,7 +71,7 @@
   // Opponent-adjusted tempo: shared game pace = league tempo + both team effects.
   let tempoEffect=new Map([...byPace.keys()].map(t=>[t,0]));
   const pTeams=[...tempoEffect.keys()];
-  for(let iter=0;iter<100;iter++){
+  for(let iter=0;iter<25;iter++){
    const next=new Map();
    for(const t of pTeams){
     const a=byPace.get(t)||[],obs=a.map(r=>({v:r.pace-paceBase-(tempoEffect.get(r.opp)||0),w:1}));
@@ -91,7 +91,7 @@
    const lo=league[ownKey],la=league[allowedKey];
    let own=new Map(styleTeams.map(t=>[t,mean(byStyle.get(t).map(r=>r[ownKey]).filter(Number.isFinite))??lo]));
    let allowed=new Map(styleTeams.map(t=>[t,mean(byStyle.get(t).map(r=>r[allowedKey]).filter(Number.isFinite))??la]));
-   for(let iter=0;iter<30;iter++){
+   for(let iter=0;iter<12;iter++){
     const no=new Map(),na=new Map();
     for(const t of styleTeams){const a=byStyle.get(t),n=a.length,w=n/(n+8);
      const x=mean(a.map(r=>Number.isFinite(r[ownKey])?r[ownKey]-((allowed.get(r.opp)??la)-la):null).filter(Number.isFinite));
