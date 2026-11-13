@@ -12,10 +12,10 @@
    loadGames:()=>read("games"),
    compare:(games,home,away,neutral,years,targetDate)=>candidates(games,home,away,years,50000,null,null,neutral,targetDate)
  };
- const FEATURE_KEYS=["o","d","p","efg","tov","orb","ftr","threeRate","threePct","twoPct","oppEfg","oppTov","oppThreeRate","oppThreePct","oppTwoPct"];
- const FEATURE_LABELS=["Adj offense","Adj defense","Pace","eFG%","Turnover rate","Off. rebound rate","Free-throw rate","3PA rate","3P%","2P%","Opp. eFG%","Opp. turnover rate","Opp. 3PA rate","Opp. 3P%","Opp. 2P%"];
+ const FEATURE_KEYS=["o","d","p","efg","tov","orb","ftr","threeRate","threePct","twoPct","oppEfg","oppTov","oppOrb","oppFtr","oppThreeRate","oppThreePct","oppTwoPct"];
+ const FEATURE_LABELS=["Adj offense","Adj defense","Pace","Off. eFG%","Off. turnover rate","Off. rebound rate","Off. free-throw rate","3PA rate","3P%","2P%","Opp. eFG% allowed","Def. forced turnover rate","Def. rebound rate","Opp. free-throw rate","Opp. 3PA rate","Opp. 3P%","Opp. 2P%"];
  const FEATURE_GROUPS=["efficiency","efficiency","pace","shooting","ball security","rebounding","shot profile","shot profile","shooting","shooting","defense","defense","defense","defense","defense"];
- const FEATURE_WEIGHTS=[1.5,1.5,2.0,1.15,.9,.85,.65,.8,1.0,.9,1.15,.75,.75,.9,.8];
+ const FEATURE_WEIGHTS=[1.5,1.5,2.0,1.2,1.0,1.0,.8,.65,.8,.7,1.2,.9,1.0,.8,.55,.7,.6];
  function gameRows(g){
    const hs=N(g.homeScore),as=N(g.awayScore),hp=pct(N(g.home_pace)),ap=pct(N(g.away_pace));
    const pace=mean([hp,ap]);
@@ -25,7 +25,7 @@
      return {team,opp,season:String(g.season),date:String(g.gameDate||""),game:g,side,
        off:score/ownP*100,def:oppScore/ownP*100,pace:ownP,
        efg:v("efg"),tov:v("tov"),orb:v("orb"),ftr:v("ftr"),threeRate:v("threeRate"),threePct:v("threePct"),twoPct:v("twoPct"),
-       oppEfg:ov("efg"),oppTov:ov("tov"),oppThreeRate:ov("threeRate"),oppThreePct:ov("threePct"),oppTwoPct:ov("twoPct")};
+       oppEfg:ov("efg"),oppTov:ov("tov"),oppOrb:ov("orb")===null?null:100-ov("orb"),oppFtr:ov("ftr"),oppThreeRate:ov("threeRate"),oppThreePct:ov("threePct"),oppTwoPct:ov("twoPct")};
    };
    return [row("home",g.homeTeam,g.awayTeam,hs,as,hp,ap),row("away",g.awayTeam,g.homeTeam,as,hs,ap,hp)];
  }
@@ -47,12 +47,12 @@
    for(let i=0;i<v1.length;i++){
      if(!Number.isFinite(v1[i])||!Number.isFinite(v2[i])||!FEATURE_SCALES[i%FEATURE_KEYS.length])continue;
      const j=i%FEATURE_KEYS.length,k=FEATURE_KEYS[j],w=FEATURE_WEIGHTS[j];
-     const scale=FEATURE_SCALES[j],z=Math.pow((v1[i]-v2[i])/scale,2),group=({o:"efficiency",d:"efficiency",p:"pace",efg:"shooting",tov:"ballSecurity",orb:"rebounding",ftr:"shotProfile",threeRate:"shotProfile",threePct:"shooting",twoPct:"shooting",oppEfg:"defense",oppTov:"defense",oppThreeRate:"defense",oppThreePct:"defense",oppTwoPct:"defense"})[k];
+     const scale=FEATURE_SCALES[j],z=Math.pow((v1[i]-v2[i])/scale,2),group=({o:"efficiency",d:"efficiency",p:"pace",efg:"shooting",tov:"ballSecurity",orb:"rebounding",ftr:"shotProfile",threeRate:"shotProfile",threePct:"shooting",twoPct:"shooting",oppEfg:"defense",oppTov:"defense",oppOrb:"rebounding",oppFtr:"defense",oppThreeRate:"defense",oppThreePct:"defense",oppTwoPct:"defense"})[k];
      sum+=w*z;weight+=w;used++;details[group].sum+=w*z;details[group].w+=w;
    }
    const usedA=v1.slice(0,FEATURE_KEYS.length).reduce((n,x,i)=>n+(Number.isFinite(x)&&Number.isFinite(v2[i])?1:0),0);
    const usedB=v1.slice(FEATURE_KEYS.length).reduce((n,x,i)=>n+(Number.isFinite(x)&&Number.isFinite(v2[FEATURE_KEYS.length+i])?1:0),0);
-   if(used<24||usedA<13||usedB<13||weight===0)return null;
+   if(used<28||usedA<15||usedB<15||weight===0)return null;
    Object.keys(details).forEach(k=>details[k]=details[k].w?Math.sqrt(details[k].sum/details[k].w):null);
    return {distance:Math.sqrt(sum/weight),details,coverage:used/v1.length,used};
  }
@@ -87,9 +87,9 @@
  function matchupProfilePanel(profile,teamA,teamB){
    const snap=profile.snap;
    const groups=[
-    {title:"Overall team strength",metrics:[["Adj O","o",true],["Adj D","d",false],["eFG%","efg",true],["3P%","threePct",true],["TO control","tov",false],["ORB%","orb",true],["FT rate","ftr",true],["2P%","twoPct",true]]},
-    {title:"Offensive identity",metrics:[["Adj O","o",true],["eFG%","efg",true],["3P%","threePct",true],["3PA rate","threeRate",true],["2P%","twoPct",true],["ORB%","orb",true],["FT rate","ftr",true],["TO control","tov",false]]},
-    {title:"Defensive identity",metrics:[["Adj D","d",false],["Opp eFG","oppEfg",false],["Opp 3P%","oppThreePct",false],["Opp 2P%","oppTwoPct",false],["Turnovers forced","oppTov",true],["Opp 3PA rate","oppThreeRate",false]]}
+    {title:"Overall team strength",metrics:[["Adj O","o",true],["Adj D","d",false],["Off. eFG%","efg",true],["Off. TO%","tov",false],["Off. ORB%","orb",true],["Off. FT rate","ftr",true],["Def. eFG%","oppEfg",false],["Forced TO%","oppTov",true],["Def. rebound%","oppOrb",true],["Opp. FT rate","oppFtr",false]]},
+    {title:"Offensive identity",metrics:[["Adj O","o",true],["eFG%","efg",true],["TO control","tov",false],["ORB%","orb",true],["FT rate","ftr",true],["3P%","threePct",true],["3PA rate","threeRate",true],["2P%","twoPct",true]]},
+    {title:"Defensive identity",metrics:[["Adj D","d",false],["Opp. eFG%","oppEfg",false],["Forced TO%","oppTov",true],["Def. rebound%","oppOrb",true],["Opp. FT rate","oppFtr",false],["Opp. 3P%","oppThreePct",false],["Opp. 2P%","oppTwoPct",false],["Opp. 3PA rate","oppThreeRate",false]]}
    ];
    const show=v=>Number.isFinite(v)?v.toFixed(1):"—";
    const paceGap=profile.a.p-profile.b.p;
