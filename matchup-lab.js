@@ -120,13 +120,17 @@
    const entries=(rec?.lines||[]).filter(x=>N(x.spread)!==null||N(x.overUnder)!==null);
    return {spread:entries.length?mean(entries.map(x=>N(x.spread)).filter(Number.isFinite)):null,total:entries.length?mean(entries.map(x=>N(x.overUnder)).filter(Number.isFinite)):null,providers:entries.length};
  }
- let snapshotCacheGames=null,snapshotCache=new Map();
+ let snapshotCacheSignature=null,snapshotCache=new Map();
  function candidates(games,teamA,teamB,years,count,spread,total,neutral,targetDate){
    const seasons=[...new Set(games.map(g=>Number(g.season)).filter(Number.isFinite))].sort((a,b)=>a-b);
    const currentSeason=seasons[seasons.length-1];if(!currentSeason)throw Error("No imported season data found.");
    const targetSeasons=years==="all"?seasons.filter(s=>s<currentSeason):seasons.filter(s=>s<currentSeason&&s>=currentSeason-Number(years));
    const relevantGames=games.filter(g=>targetSeasons.includes(Number(g.season))||Number(g.season)===currentSeason);
-   if(snapshotCacheGames!==games){snapshotCacheGames=games;snapshotCache.clear()}
+   // IndexedDB returns a fresh array on every read. Cache by a stable dataset
+   // fingerprint instead of array identity so selecting another matchup reuses
+   // the expensive chronological snapshots.
+   const datasetSignature=games.length+":"+games.reduce((h,g)=>{const s=String(g.id??g.sourceGameId??g.gameDate??"")+"|"+String(g.homeScore??"")+"|"+String(g.awayScore??"")+"|"+String(g.season??"");for(let i=0;i<s.length;i++)h=(Math.imul(h,31)+s.charCodeAt(i))|0;return h},7);
+   if(snapshotCacheSignature!==datasetSignature){snapshotCacheSignature=datasetSignature;snapshotCache.clear()}
    const cacheKey=years;
    if(!snapshotCache.has(cacheKey))snapshotCache.set(cacheKey,buildSnapshots(relevantGames));
    const built=snapshotCache.get(cacheKey);
