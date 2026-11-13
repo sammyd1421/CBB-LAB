@@ -1,4 +1,4 @@
-/* CBB LAB opponent-adjusted ratings engine v2.
+/* CBB LAB opponent-adjusted ratings engine v3.
    Quality layer: season-weighted, game-level joint opponent adjustment with
    ridge-style shrinkage. Style layer: recent team-game fingerprint metrics.
    Pace is a separate opponent-adjusted model of shared game possessions.
@@ -8,7 +8,7 @@
  const mean=a=>{const v=a.filter(Number.isFinite);return v.length?v.reduce((s,x)=>s+x,0)/v.length:null};
  const wmean=a=>{let sw=0,s=0;for(const x of a)if(Number.isFinite(x.v)&&Number.isFinite(x.w)&&x.w>0){sw+=x.w;s+=x.v*x.w}return sw?s/sw:null};
  const pct=x=>x!==null&&Math.abs(x)<=1.5?x*100:x;
- const KEYS=["efg","tov","orb","ftr","threeRate","threePct","twoPct","oppEfg","oppTov","oppThreeRate","oppThreePct","oppTwoPct"];
+ const KEYS=["efg","tov","orb","ftr","threeRate","threePct","twoPct","oppEfg","oppTov","oppOrb","oppFtr","oppThreeRate","oppThreePct","oppTwoPct"];
  function rowsFrom(games){
   const out=[];
   for(const g of games){
@@ -20,7 +20,7 @@
     return{team,opp,gameId:id,gameDate:date,season:String(g.season||""),home:side==="home",neutral:!!g.neutralSite,
      off:score/pace*100,def:against/pace*100,pace,
      efg:v("efg"),tov:v("tov"),orb:v("orb"),ftr:v("ftr"),threeRate:v("threeRate"),threePct:v("threePct"),twoPct:v("twoPct"),
-     oppEfg:ov("efg"),oppTov:ov("tov"),oppThreeRate:ov("threeRate"),oppThreePct:ov("threePct"),oppTwoPct:ov("twoPct")};
+     oppEfg:ov("efg"),oppTov:ov("tov"),oppOrb:ov("orb")===null?null:100-ov("orb"),oppFtr:ov("ftr"),oppThreeRate:ov("threeRate"),oppThreePct:ov("threePct"),oppTwoPct:ov("twoPct")};
    };
    out.push(make("home",g.homeTeam,g.awayTeam,hs,as,hp),make("away",g.awayTeam,g.homeTeam,as,hs,ap));
   }
@@ -86,7 +86,7 @@
   const styleTeams=[...byStyle.keys()],league={};
   KEYS.forEach(k=>league[k]=mean(styleTeams.flatMap(t=>(byStyle.get(t)||[]).map(r=>r[k]).filter(Number.isFinite))));
   const styleResults=new Map(styleTeams.map(t=>[t,{}]));
-  const pairs=[["efg","oppEfg"],["tov","oppTov"],["threeRate","oppThreeRate"],["threePct","oppThreePct"],["twoPct","oppTwoPct"]];
+  const pairs=[["efg","oppEfg"],["tov","oppTov"],["orb","oppOrb"],["ftr","oppFtr"],["threeRate","oppThreeRate"],["threePct","oppThreePct"],["twoPct","oppTwoPct"]];
   for(const [ownKey,allowedKey] of pairs){
    const lo=league[ownKey],la=league[allowedKey];
    let own=new Map(styleTeams.map(t=>[t,mean(byStyle.get(t).map(r=>r[ownKey]).filter(Number.isFinite))??lo]));
@@ -108,7 +108,7 @@
    const v={n:sa.length,o:leagueO+(offense.get(t)||0),d:leagueD+(defense.get(t)||0),p:paceBase+(tempoEffect.get(t)||0),
     rawO:wmean(current.map(r=>({v:r.off,w:r.weight}))),rawD:wmean(current.map(r=>({v:r.def,w:r.weight}))),rawP:mean(pa.map(r=>r.pace)),
     homeCourtEstimate:hca,qualityGames:current.length,qualityMethod:"season-weighted joint opponent adjustment",paceMethod:"opponent-adjusted shared-game tempo"};
-   const a=sa;["orb","ftr"].forEach(k=>{const z=mean(a.map(r=>r[k]).filter(Number.isFinite)),prior=league[k],w=a.length/(a.length+8);v[k]=z===null?null:(prior===null?z:w*z+(1-w)*prior)});
+   const a=sa;
    Object.assign(v,styleResults.get(t)||{});
    result.set(t,v);
   }
