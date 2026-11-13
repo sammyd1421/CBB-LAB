@@ -41,19 +41,36 @@
    for(const t of paceTeams){const a=paceBy.get(t),w=a.length/(a.length+6),p=mean(a.map(r=>r.pace-((tempo.get(r.opp)??lgP)-lgP)));nextTempo.set(t,w*p+(1-w)*lgP)}
    tempo=nextTempo;
   }
-  // Adjust opponent shooting/ball-security outcomes for the offensive quality
-  // and tendencies of the teams faced. A defense is not credited/blamed for
-  // allowing a high eFG or 3P% against an elite shooting opponent at face value.
-  const offenseProfile=new Map();
-  for(const t of teams){const a=by.get(t),p={};["efg","tov","threeRate","threePct","twoPct"].forEach(k=>p[k]=mean(a.map(r=>r[k]).filter(Number.isFinite)));offenseProfile.set(t,p)}
-  const defensiveMap={oppEfg:"efg",oppTov:"tov",oppThreeRate:"threeRate",oppThreePct:"threePct",oppTwoPct:"twoPct"};
+  // Solve opponent-adjusted style metrics jointly, just like efficiency:
+  // a defense's allowed rates depend on the offenses it faced, while each
+  // offense's rates depend on the defenses it faced. Avoid one-pass raw-opponent
+  // corrections. Values remain in percentage-point units.
+  const stylePairs=[
+   ["efg","oppEfg"],["tov","oppTov"],["threeRate","oppThreeRate"],
+   ["threePct","oppThreePct"],["twoPct","oppTwoPct"]
+  ];
+  const styleResults=new Map(teams.map(t=>[t,{}]));
+  for(const [ownKey,allowedKey] of stylePairs){
+   const leagueOwn=league[ownKey],leagueAllowed=league[allowedKey];
+   let own=new Map(teams.map(t=>[t,mean(by.get(t).map(r=>r[ownKey]).filter(Number.isFinite))??leagueOwn]));
+   let allowed=new Map(teams.map(t=>[t,mean(by.get(t).map(r=>r[allowedKey]).filter(Number.isFinite))??leagueAllowed]));
+   for(let iter=0;iter<25;iter++){
+    const nextOwn=new Map(),nextAllowed=new Map();
+    for(const t of teams){
+     const a=by.get(t),w=a.length/(a.length+8);
+     const ownAdj=mean(a.map(r=>Number.isFinite(r[ownKey])?r[ownKey]-((allowed.get(r.opp)??leagueAllowed)-leagueAllowed):null).filter(Number.isFinite));
+     const allowedAdj=mean(a.map(r=>Number.isFinite(r[allowedKey])?r[allowedKey]-((own.get(r.opp)??leagueOwn)-leagueOwn):null).filter(Number.isFinite));
+     nextOwn.set(t,ownAdj===null?leagueOwn:w*ownAdj+(1-w)*leagueOwn);
+     nextAllowed.set(t,allowedAdj===null?leagueAllowed:w*allowedAdj+(1-w)*leagueAllowed);
+    }
+    own=nextOwn;allowed=nextAllowed;
+   }
+   for(const t of teams){styleResults.get(t)[ownKey]=own.get(t);styleResults.get(t)[allowedKey]=allowed.get(t)}
+  }
   const result=new Map();
-  for(const t of teams){const a=by.get(t),q=cur.get(t),w=a.length/(a.length+6),v={n:a.length,o:q.o,d:q.d,p:tempo.get(t)??mean(a.map(r=>r.pace)),rawO:mean(a.map(r=>r.off)),rawD:mean(a.map(r=>r.def)),rawP:mean((paceBy.get(t)||[]).map(r=>r.pace)),homeCourtEstimate:hca};
-   KEYS.filter(k=>!defensiveMap[k]).forEach(k=>{const z=mean(a.map(r=>r[k]).filter(Number.isFinite)),prior=league[k];v[k]=z===null?null:(prior===null?z:w*z+(1-w)*prior)});
-   Object.entries(defensiveMap).forEach(([allowedKey,offKey])=>{
-    const adjusted=a.map(r=>{const opp=offenseProfile.get(r.opp),oppMean=opp?.[offKey],leagueMean=league[offKey];return Number.isFinite(r[allowedKey])&&Number.isFinite(oppMean)&&Number.isFinite(leagueMean)?r[allowedKey]-(oppMean-leagueMean):null}).filter(Number.isFinite);
-    const z=mean(adjusted),prior=league[allowedKey];v[allowedKey]=z===null?null:(prior===null?z:w*z+(1-w)*prior);
-   });
+  for(const t of teams){const a=by.get(t),q=cur.get(t),v={n:a.length,o:q.o,d:q.d,p:tempo.get(t)??mean(a.map(r=>r.pace)),rawO:mean(a.map(r=>r.off)),rawD:mean(a.map(r=>r.def)),rawP:mean((paceBy.get(t)||[]).map(r=>r.pace)),homeCourtEstimate:hca};
+   ["orb","ftr"].forEach(k=>{const z=mean(a.map(r=>r[k]).filter(Number.isFinite)),prior=league[k],w=a.length/(a.length+8);v[k]=z===null?null:(prior===null?z:w*z+(1-w)*prior)});
+   Object.assign(v,styleResults.get(t));
    result.set(t,v)}
   return result;
  }
