@@ -103,7 +103,7 @@
    // most recent prior-season form, while every snapshot remains strictly pregame.
    const ordered=games.filter(g=>N(g.homeScore)!==null&&N(g.awayScore)!==null&&g.gameDate)
      .slice().sort((a,b)=>String(a.gameDate).localeCompare(String(b.gameDate)));
-   const snapshots=new Map(),seasonFinal=new Map();let prior=[];
+   const snapshots=new Map();let prior=[];
    for(let i=0;i<ordered.length;){
      const date=String(ordered[i].gameDate).slice(0,10),day=[];
      let j=i;while(j<ordered.length&&String(ordered[j].gameDate).slice(0,10)===date){day.push(ordered[j]);j++}
@@ -113,7 +113,7 @@
      seasons.forEach(season=>seasonFinal.set(season,adjustedSnapshot(prior,10)));
      i=j;
    }
-   return {snapshots,seasonFinal};
+   return {snapshots};
  }
  function marketFor(g,lines){
    const rec=lines.find(x=>String(x.gameId)===String(g.sourceGameId||String(g.id||"").replace("cbbd-","")));
