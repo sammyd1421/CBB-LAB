@@ -33,11 +33,11 @@
    const seasonGames=games.filter(x=>String(x.season)===season);
    const ratings=g.CBBAdjustedRatings.build(seasonGames,{maxPerTeam:Infinity,paceGames:seasonGames});
    const values=[...ratings.values()],leagueOff=mean(values.map(x=>x.o)),leagueDef=mean(values.map(x=>x.d));
-   out.filter(p=>p.season===season).forEach(p=>{const q=ratings.get(p.team);if(q){p.adjOff=q.o;p.adjDef=q.d;p.pace=q.p;p.offEff=q.rawO;p.defEff=q.rawD;p.efg=q.efg;p.tov=q.tov;p.orb=q.orb;p.ftr=q.ftr;p.oppEfg=q.oppEfg;p.oppTov=q.oppTov;p.oppOrb=q.oppOrb;p.oppFtr=q.oppFtr;p.oppThreeRate=q.oppThreeRate;p.oppThreePct=q.oppThreePct;p.oppTwoPct=q.oppTwoPct;p.homeCourtEstimate=q.homeCourtEstimate;p.leagueOff=leagueOff;p.leagueDef=leagueDef}});
+   out.filter(p=>p.season===season).forEach(p=>{const q=ratings.get(p.team);if(q){p.adjOff=q.o;p.adjDef=q.d;p.pace=q.p;p.offEff=q.rawO;p.defEff=q.rawD;p.efg=q.efg;p.tov=q.tov;p.orb=q.orb;p.ftr=q.ftr;p.threeRate=q.threeRate;p.threePct=q.threePct;p.twoPct=q.twoPct;p.oppEfg=q.oppEfg;p.oppTov=q.oppTov;p.oppOrb=q.oppOrb;p.oppFtr=q.oppFtr;p.oppThreeRate=q.oppThreeRate;p.oppThreePct=q.oppThreePct;p.oppTwoPct=q.oppTwoPct;p.homeCourtEstimate=q.homeCourtEstimate;p.leagueOff=leagueOff;p.leagueDef=leagueDef}});
   });
   seasons.forEach(season=>{
    const ps=out.filter(p=>p.season===season);
-   const directions={adjOff:true,adjDef:false,pace:true,efg:true,tov:false,orb:true,ftr:true,threeRate:true,threePct:true,twoPct:true,oppEfg:false,oppTov:true,oppOrb:true,oppFtr:false,oppThreePct:false,oppTwoPct:false};
+   const directions={adjOff:true,adjDef:false,pace:true,efg:true,tov:false,orb:true,ftr:true,threeRate:true,threePct:true,twoPct:true,oppEfg:false,oppTov:true,oppOrb:true,oppFtr:false,oppThreeRate:false,oppThreePct:false,oppTwoPct:false};
    Object.entries(directions).forEach(([k,higher])=>{const arr=ps.map(p=>p[k]);ps.forEach(p=>{p[k+"Pctile"]=pct(p[k],arr,higher)})});
   });
   return out;
