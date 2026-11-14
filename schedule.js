@@ -40,7 +40,41 @@
    const status=$("scheduleStatus");
    if(status)status.textContent="Loaded automatically — Team A (home): "+g.homeTeam+" · Team B (away): "+g.awayTeam+" · "+(g.neutralSite?"Neutral site":"Home court")+".";
  }
- $("scheduleDate")?.addEventListener("change",refreshDates);
+ const refreshedDates=new Set(),refreshingDates=new Set();
+ async function refreshSelectedDate(){
+   const date=$("scheduleDate")?.value;
+   if(!date||refreshedDates.has(date)||refreshingDates.has(date))return;
+   refreshingDates.add(date);
+   const status=$("scheduleStatus");
+   try{
+     const from=new Date(date+"T00:00:00"),to=new Date(date+"T23:59:59.999");
+     const q=new URLSearchParams({resource:"games",season:"2027",startDateRange:from.toISOString(),endDateRange:to.toISOString()});
+     const response=await fetch("/api/cbbd?"+q.toString(),{headers:{Accept:"application/json"}});
+     if(!response.ok)throw Error("Schedule refresh returned HTTP "+response.status);
+     const rows=await response.json();
+     if(!Array.isArray(rows))throw Error("Unexpected schedule response.");
+     const incoming=rows.filter(g=>g&&g.id!==null&&g.homeTeam&&g.awayTeam&&g.startDate).map(g=>({
+       id:String(g.id),season:2027,startDate:g.startDate,startTimeTbd:!!(g.startTimeTbd??g.startTimeTBD),
+       homeTeam:g.homeTeam,awayTeam:g.awayTeam,neutralSite:!!g.neutralSite,
+       status:g.status||((g.completed)?"completed":"scheduled"),completed:!!g.completed,
+       seasonType:g.seasonType||"",venue:g.venue||"",city:g.city||"",state:g.state||"",
+       homeTeamId:g.homeTeamId??g.homeId??null,awayTeamId:g.awayTeamId??g.awayId??null
+     }));
+     const merged=new Map(schedule.map(g=>[String(g.id),g]));
+     incoming.forEach(g=>merged.set(g.id,g));
+     schedule=[...merged.values()].sort((a,b)=>String(a.startDate).localeCompare(String(b.startDate)));
+     save(schedule);
+     const selected=$("scheduleGame")?.value;
+     refreshDates();
+     if(selected&&schedule.some(g=>String(g.id)===selected))$("scheduleGame").value=selected;
+     refreshedDates.add(date);
+     const count=incoming.filter(g=>gameDateKey(g)===date).length;
+     if(status)status.textContent="Live schedule checked for "+date+": "+count+" provider games found; "+schedule.length.toLocaleString()+" total games saved on this device.";
+   }catch(e){
+     if(status)status.textContent="Could not refresh "+date+" from the live schedule ("+e.message+"). Showing locally saved games.";
+   }finally{refreshingDates.delete(date)}
+ }
+ $("scheduleDate")?.addEventListener("change",()=>{refreshDates();refreshSelectedDate()});
  $("scheduleGame")?.addEventListener("change",applyGame);
  const button=$("importSchedule");
  if(button)button.addEventListener("click",async()=>{
@@ -80,4 +114,5 @@
  });
  if(schedule.length){$("scheduleImportStatus").textContent=schedule.length.toLocaleString()+" schedule games already saved on this device. Refresh when you want updated dates or times.";button.textContent="Refresh schedule"}
  refreshDates();
+ refreshSelectedDate();
 })();
