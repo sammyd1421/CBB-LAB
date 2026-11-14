@@ -36,7 +36,7 @@ export default async function handler(req, res) {
   // Shared Vercel CDN cache: completed historical seasons are effectively immutable,
   // so every visitor can reuse the same response for up to a year. Current-season
   // scores are refreshed every 6 hours; lines are also shared for 6 hours.
-  const cacheSeconds = resource === "lines" ? 21600 : (isCurrentSeason ? 21600 : 31536000);
+  const cacheSeconds = resource === "lines" ? 21600 : (resource === "games" && isCurrentSeason ? 900 : (isCurrentSeason ? 21600 : 31536000));
   res.setHeader("Cache-Control", "public, s-maxage=" + cacheSeconds + ", stale-while-revalidate=" + (cacheSeconds * 7));
 
   const upstream = new URL("https://api.collegebasketballdata.com/" + resource);
